@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   });
   if (!parsed.success) return validationError(parsed.error);
 
-  const rl = checkRateLimit(clientKeyFromRequest(req, 'jikan-search'), 60, 60_000);
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'jikan-search'), 60, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many search requests', undefined, rateLimitHeaders(rl));
   }

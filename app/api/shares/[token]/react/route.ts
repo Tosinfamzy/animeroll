@@ -55,7 +55,7 @@ export async function PUT(req: Request, { params }: RouteCtx) {
   const isNew = !reactorId;
   if (!reactorId) reactorId = generateReactorId();
 
-  const rl = checkRateLimit(clientKeyFromRequest(req, `react:${reactorId}`), 30, 60_000);
+  const rl = await checkRateLimit(clientKeyFromRequest(req, `react:${reactorId}`), 30, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many reactions', undefined, rateLimitHeaders(rl));
   }
@@ -96,7 +96,7 @@ export async function DELETE(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ data: { removed: false } });
   }
 
-  const rl = checkRateLimit(clientKeyFromRequest(req, `react:${reactorId}`), 30, 60_000);
+  const rl = await checkRateLimit(clientKeyFromRequest(req, `react:${reactorId}`), 30, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many reactions', undefined, rateLimitHeaders(rl));
   }

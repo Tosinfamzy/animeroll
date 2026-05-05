@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
   const parsed = ParamsSchema.safeParse(await params);
   if (!parsed.success) return validationError(parsed.error);
 
-  const rl = checkRateLimit(clientKeyFromRequest(req, 'jikan-fetch'), 60, 60_000);
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'jikan-fetch'), 60, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many refresh requests', undefined, rateLimitHeaders(rl));
   }

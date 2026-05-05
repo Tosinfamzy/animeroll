@@ -38,7 +38,7 @@ const BodySchema = z
 export async function POST(req: Request) {
   const userId = getCurrentUserId();
 
-  const rl = checkRateLimit(clientKeyFromRequest(req, 'shares-create'), 10, 60_000);
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'shares-create'), 10, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many shares created', undefined, rateLimitHeaders(rl));
   }
