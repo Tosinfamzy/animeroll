@@ -115,14 +115,14 @@ export function EntryDetailDialog({ entry, anime, listIds, open, onOpenChange }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-left">{anime.title}</DialogTitle>
           {anime.titleEnglish && anime.titleEnglish !== anime.title ? (
             <DialogDescription className="text-left">{anime.titleEnglish}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-6 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="relative aspect-2/3 rounded-md overflow-hidden bg-muted shrink-0">
             {anime.imageUrl ? (
               <Image
