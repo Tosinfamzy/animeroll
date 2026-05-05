@@ -99,6 +99,13 @@ export function parseSnapshot(kind: 'entry' | 'list', raw: string): EntrySnapsho
 }
 
 export function shareUrl(token: string, kind: 'entry' | 'list'): string {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
-  return `${base}/share/${kind}/${token}`;
+  return `${getBaseUrl()}/share/${kind}/${token}`;
+}
+
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  return 'http://localhost:3000';
 }
