@@ -9,8 +9,11 @@ export interface RateLimitResult {
   retryAfterMs: number;
 }
 
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel's "Upstash for Redis" marketplace integration injects KV_* names;
+// a direct Upstash setup uses UPSTASH_REDIS_REST_*. Accept either.
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+const upstashToken =
+  process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
 const useUpstash = Boolean(upstashUrl && upstashToken);
 
 const redis = useUpstash
