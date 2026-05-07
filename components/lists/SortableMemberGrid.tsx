@@ -4,7 +4,8 @@ import {
   closestCenter,
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -33,9 +34,12 @@ export function SortableMemberGrid({ listId, members }: Props) {
   const qc = useQueryClient();
 
   const sensors = useSensors(
-    // 5px activation distance so a click on the handle that doesn't move
-    // shouldn't be interpreted as a drag start.
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Mouse: 5px movement threshold so a click on the handle that doesn't
+    // move isn't interpreted as a drag start.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // Touch: 250 ms press-and-hold + small tolerance so vertical scroll
+    // gestures aren't hijacked by the drag handle.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

@@ -14,6 +14,8 @@ export interface FilterableEntry {
   userScore: number | null;
   archived: boolean;
   anime: {
+    title: string;
+    titleEnglish: string | null;
     episodes: number | null;
     genres: string[];
     year: number | null;
@@ -21,6 +23,7 @@ export interface FilterableEntry {
 }
 
 export interface EntryFilter {
+  query?: string;
   status?: Status[];
   lengthBuckets?: LengthBucket[];
   genres?: string[];
@@ -37,6 +40,14 @@ export function lengthBucketOf(episodes: number | null): LengthBucket | null {
 }
 
 export function entryMatchesFilter(e: FilterableEntry, f: EntryFilter): boolean {
+  if (f.query) {
+    const q = f.query.trim().toLowerCase();
+    if (q.length > 0) {
+      const t1 = e.anime.title.toLowerCase();
+      const t2 = e.anime.titleEnglish?.toLowerCase() ?? '';
+      if (!t1.includes(q) && !t2.includes(q)) return false;
+    }
+  }
   if (f.status?.length && !f.status.includes(e.status)) return false;
   if (f.lengthBuckets?.length) {
     const b = lengthBucketOf(e.anime.episodes);
@@ -64,6 +75,7 @@ export function filterEntries<T extends FilterableEntry>(entries: T[], f: EntryF
 
 export function isFilterEmpty(f: EntryFilter): boolean {
   return (
+    !f.query?.trim() &&
     !f.status?.length &&
     !f.lengthBuckets?.length &&
     !f.genres?.length &&

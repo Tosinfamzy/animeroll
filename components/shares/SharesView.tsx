@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { jsonFetch } from '@/lib/api/fetch-json';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +34,20 @@ export function SharesView() {
       toast.success('Share revoked. The link no longer resolves.');
     },
     onError: () => toast.error('Failed to revoke'),
+  });
+
+  const editTake = useMutation({
+    mutationFn: ({ token, take }: { token: string; take: string | null }) =>
+      jsonFetch<{ data: { token: string; take: string | null } }>(`/api/shares/${token}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ take }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['my-shares'] });
+      toast.success('Take updated');
+    },
+    onError: () => toast.error('Failed to update take'),
   });
 
   const resnapshot = useMutation({
@@ -95,9 +111,11 @@ export function SharesView() {
                   }
                 }}
                 onResnapshot={() => resnapshot.mutate(r.token)}
+                onEditTake={(take) => editTake.mutate({ token: r.token, take })}
                 pending={
                   (revoke.isPending && revoke.variables === r.token) ||
-                  (resnapshot.isPending && resnapshot.variables === r.token)
+                  (resnapshot.isPending && resnapshot.variables === r.token) ||
+                  (editTake.isPending && editTake.variables.token === r.token)
                 }
               />
             ))}
@@ -125,15 +143,19 @@ function ShareRow({
   row,
   onRevoke,
   onResnapshot,
+  onEditTake,
   pending,
 }: {
   row: MyShareRow;
   onRevoke?: () => void;
   onResnapshot?: () => void;
+  onEditTake?: (take: string | null) => void;
   pending: boolean;
 }) {
   const isRevoked = row.revokedAt !== null;
   const total = row.counts.heart + row.counts.eyes + row.counts.nope;
+  const [editingTake, setEditingTake] = useState(false);
+  const [draftTake, setDraftTake] = useState('');
 
   return (
     <Card
@@ -198,10 +220,74 @@ function ShareRow({
           ) : null}
         </div>
 
-        {row.take ? (
-          <p className="text-sm italic text-foreground/80 line-clamp-2">
-            &ldquo;{row.take}&rdquo;
-          </p>
+        {editingTake && onEditTake ? (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = draftTake.trim();
+              onEditTake(trimmed === '' ? null : trimmed);
+              setEditingTake(false);
+            }}
+          >
+            <Textarea
+              autoFocus
+              rows={2}
+              maxLength={280}
+              value={draftTake}
+              onChange={(e) => setDraftTake(e.target.value)}
+              placeholder="best fight choreography of the decade"
+            />
+            <div className="flex gap-2 self-start text-xs">
+              <Button type="submit" size="sm" disabled={pending}>
+                Save
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditingTake(false)}
+              >
+                Cancel
+              </Button>
+              <span className="text-muted-foreground self-center tabular-nums">
+                {draftTake.length}/280
+              </span>
+            </div>
+          </form>
+        ) : row.take ? (
+          (() => {
+            const take = row.take;
+            return (
+              <button
+                type="button"
+                onClick={
+                  onEditTake
+                    ? () => {
+                        setDraftTake(take);
+                        setEditingTake(true);
+                      }
+                    : undefined
+                }
+                disabled={!onEditTake}
+                className="text-left text-sm italic text-foreground/80 line-clamp-2 hover:text-foreground transition-colors disabled:cursor-default"
+                title={onEditTake ? 'Click to edit take' : undefined}
+              >
+                &ldquo;{take}&rdquo;
+              </button>
+            );
+          })()
+        ) : onEditTake ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDraftTake('');
+              setEditingTake(true);
+            }}
+            className="text-left text-sm italic text-muted-foreground/60 hover:text-muted-foreground transition-colors self-start"
+          >
+            + Add a take
+          </button>
         ) : null}
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">

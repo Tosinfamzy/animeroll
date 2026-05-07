@@ -8,14 +8,21 @@ import {
   type FilterableEntry,
 } from './filters';
 
-const make = (
-  overrides: Partial<FilterableEntry> & { genres?: string[] } = {},
-): FilterableEntry => ({
-  status: 'plan',
-  userScore: null,
-  archived: false,
-  ...overrides,
+interface MakeOverrides {
+  status?: FilterableEntry['status'];
+  userScore?: FilterableEntry['userScore'];
+  archived?: FilterableEntry['archived'];
+  genres?: string[];
+  anime?: Partial<FilterableEntry['anime']>;
+}
+
+const make = (overrides: MakeOverrides = {}): FilterableEntry => ({
+  status: overrides.status ?? 'plan',
+  userScore: overrides.userScore ?? null,
+  archived: overrides.archived ?? false,
   anime: {
+    title: 'Test Title',
+    titleEnglish: null,
     episodes: 12,
     genres: overrides.genres ?? ['Action'],
     year: 2020,
@@ -58,6 +65,25 @@ describe('isFilterEmpty', () => {
 describe('entryMatchesFilter', () => {
   it('passes empty filter for any entry', () => {
     expect(entryMatchesFilter(make(), {})).toBe(true);
+  });
+
+  it('matches query against title (case-insensitive)', () => {
+    const entry = make({ anime: { title: 'Sousou no Frieren', titleEnglish: null, episodes: 28, genres: [], year: 2023 } });
+    expect(entryMatchesFilter(entry, { query: 'frieren' })).toBe(true);
+    expect(entryMatchesFilter(entry, { query: 'FRIE' })).toBe(true);
+    expect(entryMatchesFilter(entry, { query: 'naruto' })).toBe(false);
+  });
+
+  it('matches query against titleEnglish too', () => {
+    const entry = make({
+      anime: { title: 'Kimetsu no Yaiba', titleEnglish: 'Demon Slayer', episodes: 26, genres: [], year: 2019 },
+    });
+    expect(entryMatchesFilter(entry, { query: 'demon' })).toBe(true);
+  });
+
+  it('empty/whitespace query is a no-op', () => {
+    expect(entryMatchesFilter(make(), { query: '   ' })).toBe(true);
+    expect(entryMatchesFilter(make(), { query: '' })).toBe(true);
   });
 
   it('combines filters with AND', () => {
