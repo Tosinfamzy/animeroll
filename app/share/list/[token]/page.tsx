@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
@@ -52,6 +53,10 @@ export default async function SharedListPage({ params }: Props) {
   const reactorId = cookieStore.get(REACTOR_COOKIE)?.value;
   const mine = reactorId ? await loadReactionFor(token, reactorId) : null;
 
+  const { userId } = await auth();
+  const viewerAuthed = userId !== null;
+  const viewerOwnsShare = userId !== null && userId === loaded.share.createdBy;
+
   return (
     <PublicListView
       token={token}
@@ -59,6 +64,9 @@ export default async function SharedListPage({ params }: Props) {
       take={loaded.share.take}
       counts={counts}
       mine={mine}
+      viewerAuthed={viewerAuthed}
+      viewerOwnsShare={viewerOwnsShare}
+      currentPath={`/share/list/${token}`}
     />
   );
 }

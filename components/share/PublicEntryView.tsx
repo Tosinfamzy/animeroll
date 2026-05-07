@@ -3,6 +3,7 @@ import Image from 'next/image';
 import type { EntrySnapshot } from '@/lib/shares';
 import { StatusBadge } from '@/components/rolodex/StatusBadge';
 import { ReactionBar } from './ReactionBar';
+import { SaveFromShareButton } from './SaveFromShareButton';
 import { SignupCTA } from './SignupCTA';
 
 interface Props {
@@ -11,9 +12,21 @@ interface Props {
   take: string | null;
   counts: { heart: number; eyes: number; nope: number };
   mine: 'heart' | 'eyes' | 'nope' | null;
+  viewerAuthed: boolean;
+  viewerOwnsShare: boolean;
+  currentPath: string;
 }
 
-export function PublicEntryView({ token, snapshot, take, counts, mine }: Props) {
+export function PublicEntryView({
+  token,
+  snapshot,
+  take,
+  counts,
+  mine,
+  viewerAuthed,
+  viewerOwnsShare,
+  currentPath,
+}: Props) {
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 flex flex-col gap-8">
       <article className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-6">
@@ -86,7 +99,10 @@ export function PublicEntryView({ token, snapshot, take, counts, mine }: Props) 
         <ReactionBar token={token} initialCounts={counts} initialMine={mine} />
       </section>
 
-      <SignupCTA />
+      {viewerAuthed && !viewerOwnsShare ? (
+        <SaveFromShareButton token={token} kind="entry" />
+      ) : null}
+      {!viewerAuthed ? <SignupCTA currentPath={currentPath} context="entry" /> : null}
     </div>
   );
 }

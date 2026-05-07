@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { StatusBadge } from '@/components/rolodex/StatusBadge';
 import type { ListSnapshot } from '@/lib/shares';
 import { ReactionBar } from './ReactionBar';
+import { SaveFromShareButton } from './SaveFromShareButton';
 import { SignupCTA } from './SignupCTA';
 
 interface Props {
@@ -11,9 +12,21 @@ interface Props {
   take: string | null;
   counts: { heart: number; eyes: number; nope: number };
   mine: 'heart' | 'eyes' | 'nope' | null;
+  viewerAuthed: boolean;
+  viewerOwnsShare: boolean;
+  currentPath: string;
 }
 
-export function PublicListView({ token, snapshot, take, counts, mine }: Props) {
+export function PublicListView({
+  token,
+  snapshot,
+  take,
+  counts,
+  mine,
+  viewerAuthed,
+  viewerOwnsShare,
+  currentPath,
+}: Props) {
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 flex flex-col gap-8">
       <header className="flex flex-col gap-2">
@@ -76,7 +89,10 @@ export function PublicListView({ token, snapshot, take, counts, mine }: Props) {
         <ReactionBar token={token} initialCounts={counts} initialMine={mine} />
       </section>
 
-      <SignupCTA />
+      {viewerAuthed && !viewerOwnsShare ? (
+        <SaveFromShareButton token={token} kind="list" />
+      ) : null}
+      {!viewerAuthed ? <SignupCTA currentPath={currentPath} context="list" /> : null}
     </div>
   );
 }

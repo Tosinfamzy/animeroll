@@ -3,12 +3,10 @@ import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/lib/db';
-import { animeCache, entries, listEntries, type AnimeCacheRow } from '@/lib/db/schema';
-import { upsertAnimeCache } from '@/lib/db/queries';
-import { getAnimeById } from '@/lib/api/jikan';
+import { animeCache, entries, listEntries } from '@/lib/db/schema';
+import { ensureAnimeCached } from '@/lib/db/queries';
 import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
-import { log } from '@/lib/logger';
 import { parseGenres } from '@/lib/shares';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
@@ -93,18 +91,6 @@ export async function GET(req: Request) {
 }
 
 const PostSchema = z.object({ malId: z.number().int().positive() });
-
-async function ensureAnimeCached(malId: number): Promise<AnimeCacheRow | null> {
-  const cached = await db.query.animeCache.findFirst({ where: eq(animeCache.malId, malId) });
-  if (cached) return cached;
-  try {
-    const fresh = await getAnimeById(malId);
-    return await upsertAnimeCache(fresh);
-  } catch (err) {
-    log.error({ route: 'entries', malId, err }, 'jikan_fetch_failed');
-    return null;
-  }
-}
 
 export async function POST(req: Request) {
   const userId = await requireUserId();
