@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db';
 import { animeCache, entries, listEntries, lists, shares } from '@/lib/db/schema';
-import { getCurrentUserId } from '@/lib/auth';
+import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import {
   buildEntrySnapshot,
@@ -23,7 +23,7 @@ const BodySchema = z.discriminatedUnion('kind', [
 ]);
 
 export async function POST(req: Request) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'shares-create'), 10, 60_000);
   if (!rl.allowed) {

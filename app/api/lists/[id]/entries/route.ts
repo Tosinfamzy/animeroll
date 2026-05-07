@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db';
 import { entries, listEntries, lists } from '@/lib/db/schema';
-import { getCurrentUserId } from '@/lib/auth';
+import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
@@ -28,7 +28,7 @@ async function ensureOwnedEntry(userId: string, entryId: string) {
 }
 
 export async function POST(req: Request, { params }: RouteCtx) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'list-membership'), 60, 60_000);
   if (!rl.allowed) {
@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: RouteCtx) {
 }
 
 export async function DELETE(req: Request, { params }: RouteCtx) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'list-membership'), 60, 60_000);
   if (!rl.allowed) {

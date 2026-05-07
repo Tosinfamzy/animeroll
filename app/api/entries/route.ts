@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { animeCache, entries, listEntries, type AnimeCacheRow } from '@/lib/db/schema';
 import { upsertAnimeCache } from '@/lib/db/queries';
 import { getAnimeById } from '@/lib/api/jikan';
-import { getCurrentUserId } from '@/lib/auth';
+import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import { log } from '@/lib/logger';
 import { parseGenres } from '@/lib/shares';
@@ -40,7 +40,7 @@ const QuerySchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
   const url = new URL(req.url);
   const queryParsed = QuerySchema.safeParse({
     limit: url.searchParams.get('limit') ?? undefined,
@@ -107,7 +107,7 @@ async function ensureAnimeCached(malId: number): Promise<AnimeCacheRow | null> {
 }
 
 export async function POST(req: Request) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-write'), 60, 60_000);
   if (!rl.allowed) {

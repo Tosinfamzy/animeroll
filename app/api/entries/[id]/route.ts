@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db';
 import { entries, STATUSES } from '@/lib/db/schema';
-import { getCurrentUserId } from '@/lib/auth';
+import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
@@ -25,7 +25,7 @@ interface RouteCtx {
 }
 
 export async function PATCH(req: Request, { params }: RouteCtx) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-patch'), 120, 60_000);
   if (!rl.allowed) {
@@ -63,7 +63,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 }
 
 export async function DELETE(req: Request, { params }: RouteCtx) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-delete'), 30, 60_000);
   if (!rl.allowed) {

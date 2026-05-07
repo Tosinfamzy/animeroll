@@ -4,12 +4,12 @@ import { z } from 'zod';
 
 import { db } from '@/lib/db';
 import { lists, listEntries } from '@/lib/db/schema';
-import { getCurrentUserId } from '@/lib/auth';
+import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
 export async function GET() {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
   const rows = await db
     .select({
       list: lists,
@@ -29,7 +29,7 @@ const PostSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const userId = getCurrentUserId();
+  const userId = await requireUserId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-create'), 30, 60_000);
   if (!rl.allowed) {
