@@ -19,7 +19,17 @@ import type { EntryWithAnime } from '@/lib/types';
 import { EntryDetailDialog } from './EntryDetailDialog';
 import { STATUS_LABELS, StatusBadge } from './StatusBadge';
 
-export function AnimeCard({ entry, anime, listIds }: EntryWithAnime) {
+interface AnimeCardProps extends EntryWithAnime {
+  /**
+   * If set, the card renders a "Remove" button that detaches this entry
+   * from the given list (without deleting the entry itself). Used by the
+   * /lists/[id] view so users can curate without round-tripping through
+   * the entry detail dialog.
+   */
+  removeFromListId?: string;
+}
+
+export function AnimeCard({ entry, anime, listIds, removeFromListId }: AnimeCardProps) {
   const qc = useQueryClient();
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -63,6 +73,25 @@ export function AnimeCard({ entry, anime, listIds }: EntryWithAnime) {
       toast.success(entry.archived ? 'Unarchived' : 'Archived');
     },
     onError: () => toast.error('Failed to archive'),
+  });
+
+  const removeFromList = useMutation({
+    mutationFn: () => {
+      if (!removeFromListId) throw new Error('removeFromListId not set');
+      return jsonFetch<{ data: unknown }>(
+        `/api/lists/${removeFromListId}/entries?entryId=${encodeURIComponent(entry.id)}`,
+        { method: 'DELETE' },
+      );
+    },
+    onSuccess: () => {
+      if (removeFromListId) {
+        void qc.invalidateQueries({ queryKey: ['list', removeFromListId] });
+      }
+      void qc.invalidateQueries({ queryKey: ['entries'] });
+      void qc.invalidateQueries({ queryKey: ['lists'] });
+      toast.success('Removed from list');
+    },
+    onError: () => toast.error('Failed to remove'),
   });
 
   return (
@@ -127,6 +156,17 @@ export function AnimeCard({ entry, anime, listIds }: EntryWithAnime) {
               >
                 {entry.archived ? 'Unarchive' : 'Archive'}
               </Button>
+              {removeFromListId ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => removeFromList.mutate()}
+                  disabled={removeFromList.isPending}
+                  title="Remove from this list (entry stays in your library)"
+                >
+                  {removeFromList.isPending ? '…' : 'Remove'}
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

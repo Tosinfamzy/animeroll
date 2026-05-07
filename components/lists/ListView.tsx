@@ -10,6 +10,7 @@ import { AnimeCard } from '@/components/rolodex/AnimeCard';
 import { ShareDialog } from '@/components/share/ShareDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithMembers } from '@/lib/types';
 
@@ -17,11 +18,18 @@ interface Props {
   listId: string;
 }
 
+interface UpdateBody {
+  name?: string;
+  description?: string | null;
+}
+
 export function ListView({ listId }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [draftDesc, setDraftDesc] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
 
   const q = useQuery<{ data: ListWithMembers }>({
@@ -30,20 +38,26 @@ export function ListView({ listId }: Props) {
     retry: false,
   });
 
-  const rename = useMutation({
-    mutationFn: (name: string) =>
+  const update = useMutation({
+    mutationFn: (body: UpdateBody) =>
       jsonFetch<{ data: unknown }>(`/api/lists/${listId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify(body),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['list', listId] });
       void qc.invalidateQueries({ queryKey: ['lists'] });
-      setEditing(false);
-      toast.success('Renamed');
+      if ('name' in vars) {
+        setEditingName(false);
+        toast.success('Renamed');
+      }
+      if ('description' in vars) {
+        setEditingDesc(false);
+        toast.success('Description updated');
+      }
     },
-    onError: () => toast.error('Failed to rename'),
+    onError: () => toast.error('Failed to update list'),
   });
 
   const remove = useMutation({
@@ -76,13 +90,14 @@ export function ListView({ listId }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          {editing ? (
+        <div className="flex flex-col gap-2 min-w-0 flex-1">
+          {editingName ? (
             <form
               className="flex gap-2 items-center"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (draftName.trim()) rename.mutate(draftName);
+                const trimmed = draftName.trim();
+                if (trimmed) update.mutate({ name: trimmed });
               }}
             >
               <Input
@@ -92,14 +107,14 @@ export function ListView({ listId }: Props) {
                 onChange={(e) => setDraftName(e.target.value)}
                 className="text-2xl font-semibold h-auto py-1.5"
               />
-              <Button type="submit" size="sm" disabled={rename.isPending}>
+              <Button type="submit" size="sm" disabled={update.isPending}>
                 Save
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => setEditing(false)}
+                onClick={() => setEditingName(false)}
               >
                 Cancel
               </Button>
@@ -109,7 +124,7 @@ export function ListView({ listId }: Props) {
               type="button"
               onClick={() => {
                 setDraftName(list.name);
-                setEditing(true);
+                setEditingName(true);
               }}
               className="text-left"
               title="Click to rename"
@@ -119,9 +134,60 @@ export function ListView({ listId }: Props) {
               </h1>
             </button>
           )}
-          {list.description ? (
-            <p className="text-sm text-muted-foreground">{list.description}</p>
-          ) : null}
+
+          {editingDesc ? (
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const trimmed = draftDesc.trim();
+                update.mutate({ description: trimmed === '' ? null : trimmed });
+              }}
+            >
+              <Textarea
+                autoFocus
+                rows={2}
+                maxLength={500}
+                value={draftDesc}
+                onChange={(e) => setDraftDesc(e.target.value)}
+                placeholder="What ties these together?"
+              />
+              <div className="flex gap-2 self-start">
+                <Button type="submit" size="sm" disabled={update.isPending}>
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingDesc(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setDraftDesc(list.description ?? '');
+                setEditingDesc(true);
+              }}
+              className="text-left self-start"
+              title={list.description ? 'Click to edit description' : 'Add a description'}
+            >
+              {list.description ? (
+                <p className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  {list.description}
+                </p>
+              ) : (
+                <p className="text-sm italic text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+                  Add a description
+                </p>
+              )}
+            </button>
+          )}
+
           <p className="text-xs text-muted-foreground mt-1">
             {members.length} {members.length === 1 ? 'entry' : 'entries'}
           </p>
@@ -162,7 +228,7 @@ export function ListView({ listId }: Props) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {members.map((m) => (
-            <AnimeCard key={m.entry.id} {...m} />
+            <AnimeCard key={m.entry.id} {...m} removeFromListId={listId} />
           ))}
         </div>
       )}
