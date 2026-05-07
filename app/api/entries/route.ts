@@ -8,7 +8,7 @@ import { ensureAnimeCached } from '@/lib/db/queries';
 import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import { parseGenres } from '@/lib/shares';
-import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
+import { checkRateLimit, rateLimitHeaders, userKeyFromRequest } from '@/lib/rate-limit';
 
 interface Cursor {
   /** ms-since-epoch of the entry's added_at */
@@ -95,7 +95,7 @@ const PostSchema = z.object({ malId: z.number().int().positive() });
 export async function POST(req: Request) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-write'), 60, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'entries-write'), 60, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many entry writes', undefined, rateLimitHeaders(rl));
   }

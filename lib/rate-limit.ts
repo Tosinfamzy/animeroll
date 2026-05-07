@@ -94,6 +94,17 @@ export function clientKeyFromRequest(req: Request, suffix: string): string {
   return `${suffix}:${ip}`;
 }
 
+/**
+ * Per-user rate-limit key. Use for authed mutation routes so:
+ *   - users behind a shared NAT don't share a bucket
+ *   - one user roaming to a new IP doesn't get a fresh budget
+ *
+ * Pair with `await requireUserId()` at the top of the handler.
+ */
+export function userKeyFromRequest(userId: string, suffix: string): string {
+  return `${suffix}:u:${userId}`;
+}
+
 export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
   if (result.allowed) {
     return { 'X-RateLimit-Remaining': String(result.remaining) };

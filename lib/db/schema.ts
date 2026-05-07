@@ -41,7 +41,7 @@ export const entries = sqliteTable(
   'entries',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().default('me'),
+    userId: text('user_id').notNull(),
     malId: integer('mal_id')
       .notNull()
       .references(() => animeCache.malId),
@@ -67,7 +67,7 @@ export const lists = sqliteTable(
   'lists',
   {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().default('me'),
+    userId: text('user_id').notNull(),
     name: text('name').notNull(),
     description: text('description'),
     createdAt: timestampMs('created_at').notNull().default(nowMs),
@@ -103,7 +103,7 @@ export const shares = sqliteTable(
     listId: text('list_id').references(() => lists.id, { onDelete: 'cascade' }),
     take: text('take'),
     snapshot: text('snapshot').notNull(),
-    createdBy: text('created_by').notNull().default('me'),
+    createdBy: text('created_by').notNull(),
     createdAt: timestampMs('created_at').notNull().default(nowMs),
     revokedAt: timestampMs('revoked_at'),
   },

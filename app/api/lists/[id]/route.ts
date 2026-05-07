@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { animeCache, entries, listEntries, lists } from '@/lib/db/schema';
 import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
-import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
+import { checkRateLimit, rateLimitHeaders, userKeyFromRequest } from '@/lib/rate-limit';
 import { parseGenres } from '@/lib/shares';
 
 const ParamsSchema = z.object({ id: z.string().min(1) });
@@ -51,7 +51,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
 export async function PATCH(req: Request, { params }: RouteCtx) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-patch'), 60, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'lists-patch'), 60, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many list edits', undefined, rateLimitHeaders(rl));
   }
@@ -80,7 +80,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 export async function DELETE(req: Request, { params }: RouteCtx) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-delete'), 10, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'lists-delete'), 10, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many list deletes', undefined, rateLimitHeaders(rl));
   }

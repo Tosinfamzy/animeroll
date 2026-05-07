@@ -12,7 +12,7 @@ import {
   generateShareToken,
   shareUrl,
 } from '@/lib/shares';
-import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
+import { checkRateLimit, rateLimitHeaders, userKeyFromRequest } from '@/lib/rate-limit';
 
 // Discriminated union so TS narrows entryId/listId based on kind without
 // needing non-null assertions at usage sites.
@@ -25,7 +25,7 @@ const BodySchema = z.discriminatedUnion('kind', [
 export async function POST(req: Request) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'shares-create'), 10, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'shares-create'), 10, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many shares created', undefined, rateLimitHeaders(rl));
   }

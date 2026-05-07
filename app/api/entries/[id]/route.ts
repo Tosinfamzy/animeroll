@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { entries, STATUSES } from '@/lib/db/schema';
 import { requireUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
-import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
+import { checkRateLimit, rateLimitHeaders, userKeyFromRequest } from '@/lib/rate-limit';
 
 const ParamsSchema = z.object({ id: z.string().min(1) });
 
@@ -27,7 +27,7 @@ interface RouteCtx {
 export async function PATCH(req: Request, { params }: RouteCtx) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-patch'), 120, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'entries-patch'), 120, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many entry edits', undefined, rateLimitHeaders(rl));
   }
@@ -65,7 +65,7 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 export async function DELETE(req: Request, { params }: RouteCtx) {
   const userId = await requireUserId();
 
-  const rl = await checkRateLimit(clientKeyFromRequest(req, 'entries-delete'), 30, 60_000);
+  const rl = await checkRateLimit(userKeyFromRequest(userId, 'entries-delete'), 30, 60_000);
   if (!rl.allowed) {
     return errorResponse(429, 'rate_limited', 'Too many entry deletes', undefined, rateLimitHeaders(rl));
   }
