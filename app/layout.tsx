@@ -46,6 +46,9 @@ export default function RootLayout({
                   <Link href="/lists" className="hover:text-foreground transition-colors">
                     Lists
                   </Link>
+                  <Link href="/shares" className="hover:text-foreground transition-colors">
+                    Shares
+                  </Link>
                   <Link href="/archive" className="hover:text-foreground transition-colors">
                     Archive
                   </Link>
