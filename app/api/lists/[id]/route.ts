@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/lib/db';
@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     .innerJoin(entries, eq(entries.id, listEntries.entryId))
     .innerJoin(animeCache, eq(animeCache.malId, entries.malId))
     .where(eq(listEntries.listId, parsed.data.id))
-    .orderBy(desc(listEntries.addedAt));
+    .orderBy(asc(listEntries.position), desc(listEntries.addedAt));
 
   const members = memberRows.map((r) => ({
     entry: r.entry,

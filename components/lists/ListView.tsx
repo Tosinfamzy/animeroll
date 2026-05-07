@@ -6,13 +6,13 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { AnimeCard } from '@/components/rolodex/AnimeCard';
 import { ShareDialog } from '@/components/share/ShareDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithMembers } from '@/lib/types';
+import { SortableMemberGrid } from './SortableMemberGrid';
 
 interface Props {
   listId: string;
@@ -226,11 +226,7 @@ export function ListView({ listId }: Props) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {members.map((m) => (
-            <AnimeCard key={m.entry.id} {...m} removeFromListId={listId} />
-          ))}
-        </div>
+        <SortableMemberGrid listId={listId} members={members} />
       )}
     </div>
   );
