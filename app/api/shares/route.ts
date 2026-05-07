@@ -3,14 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/lib/db';
-import {
-  animeCache,
-  entries,
-  listEntries,
-  lists,
-  shares,
-  SHARE_KINDS,
-} from '@/lib/db/schema';
+import { animeCache, entries, listEntries, lists, shares } from '@/lib/db/schema';
 import { getCurrentUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
 import {
@@ -21,19 +14,13 @@ import {
 } from '@/lib/shares';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
-const BodySchema = z
-  .object({
-    kind: z.enum(SHARE_KINDS),
-    entryId: z.string().min(1).optional(),
-    listId: z.string().min(1).optional(),
-    take: z.string().trim().max(280).optional(),
-  })
-  .refine(
-    (v) =>
-      (v.kind === 'entry' && !!v.entryId && !v.listId) ||
-      (v.kind === 'list' && !!v.listId && !v.entryId),
-    { message: 'Must provide exactly entryId for kind=entry or listId for kind=list' },
-  );
+// Discriminated union so TS narrows entryId/listId based on kind without
+// needing non-null assertions at usage sites.
+const TakeSchema = z.string().trim().max(280).optional();
+const BodySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('entry'), entryId: z.string().min(1), take: TakeSchema }),
+  z.object({ kind: z.literal('list'), listId: z.string().min(1), take: TakeSchema }),
+]);
 
 export async function POST(req: Request) {
   const userId = getCurrentUserId();
@@ -47,11 +34,12 @@ export async function POST(req: Request) {
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) return validationError(parsed.error);
 
-  const take = parsed.data.take?.trim() || null;
+  const trimmedTake = parsed.data.take?.trim();
+  const take = trimmedTake && trimmedTake.length > 0 ? trimmedTake : null;
   const token = generateShareToken();
 
   if (parsed.data.kind === 'entry') {
-    const entryId = parsed.data.entryId!;
+    const { entryId } = parsed.data;
     const entry = await db.query.entries.findFirst({
       where: and(eq(entries.id, entryId), eq(entries.userId, userId)),
     });
@@ -70,7 +58,7 @@ export async function POST(req: Request) {
       createdBy: userId,
     });
   } else {
-    const listId = parsed.data.listId!;
+    const { listId } = parsed.data;
     const list = await db.query.lists.findFirst({
       where: and(eq(lists.id, listId), eq(lists.userId, userId)),
     });

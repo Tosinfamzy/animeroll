@@ -1,7 +1,5 @@
 import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
-
 export function SignupCTA() {
   return (
     <div className="border border-border/60 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/30">

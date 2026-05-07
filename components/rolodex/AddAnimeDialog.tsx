@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import type { NormalizedAnime } from '@/lib/api/jikan';
 
 interface AddResponse {
@@ -34,29 +35,24 @@ export function AddAnimeDialog() {
   const search = useQuery<{ data: NormalizedAnime[] }>({
     queryKey: ['anime-search', debounced],
     enabled: debounced.length > 0,
-    queryFn: async ({ signal }) => {
-      const res = await fetch(`/api/anime/search?q=${encodeURIComponent(debounced)}&limit=12`, {
-        signal,
-      });
-      if (!res.ok) throw new Error('search_failed');
-      return res.json();
-    },
+    queryFn: ({ signal }) =>
+      jsonFetch<{ data: NormalizedAnime[] }>(
+        `/api/anime/search?q=${encodeURIComponent(debounced)}&limit=12`,
+        { signal },
+      ),
     staleTime: 60 * 60 * 1000,
   });
 
   const qc = useQueryClient();
   const add = useMutation({
-    mutationFn: async (malId: number): Promise<AddResponse> => {
-      const res = await fetch('/api/entries', {
+    mutationFn: (malId: number) =>
+      jsonFetch<AddResponse>('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ malId }),
-      });
-      if (!res.ok) throw new Error('add_failed');
-      return res.json() as Promise<AddResponse>;
-    },
+      }),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['entries'] });
+      void qc.invalidateQueries({ queryKey: ['entries'] });
       toast.success(data.existed ? 'Already in your library' : 'Added to library');
     },
     onError: () => toast.error('Failed to add'),

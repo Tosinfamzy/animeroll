@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { entries, listEntries, lists } from '@/lib/db/schema';
 import { getCurrentUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
+import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
 const ParamsSchema = z.object({ id: z.string().min(1) });
 const BodySchema = z.object({ entryId: z.string().min(1) });
@@ -28,6 +29,12 @@ async function ensureOwnedEntry(userId: string, entryId: string) {
 
 export async function POST(req: Request, { params }: RouteCtx) {
   const userId = getCurrentUserId();
+
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'list-membership'), 60, 60_000);
+  if (!rl.allowed) {
+    return errorResponse(429, 'rate_limited', 'Too many list-membership writes', undefined, rateLimitHeaders(rl));
+  }
+
   const paramsParsed = ParamsSchema.safeParse(await params);
   if (!paramsParsed.success) return validationError(paramsParsed.error);
 
@@ -52,6 +59,12 @@ export async function POST(req: Request, { params }: RouteCtx) {
 
 export async function DELETE(req: Request, { params }: RouteCtx) {
   const userId = getCurrentUserId();
+
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'list-membership'), 60, 60_000);
+  if (!rl.allowed) {
+    return errorResponse(429, 'rate_limited', 'Too many list-membership writes', undefined, rateLimitHeaders(rl));
+  }
+
   const paramsParsed = ParamsSchema.safeParse(await params);
   if (!paramsParsed.success) return validationError(paramsParsed.error);
 

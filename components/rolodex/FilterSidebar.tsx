@@ -168,7 +168,7 @@ function PillRow<T extends string>({
   selected,
   onToggle,
 }: {
-  options: Array<{ value: T; label: string }>;
+  options: { value: T; label: string }[];
   selected: readonly T[];
   onToggle: (v: T) => void;
 }) {

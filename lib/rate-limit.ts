@@ -14,11 +14,9 @@ export interface RateLimitResult {
 const upstashUrl = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
 const upstashToken =
   process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
-const useUpstash = Boolean(upstashUrl && upstashToken);
 
-const redis = useUpstash
-  ? new Redis({ url: upstashUrl as string, token: upstashToken as string })
-  : null;
+const redis: Redis | null =
+  upstashUrl && upstashToken ? new Redis({ url: upstashUrl, token: upstashToken }) : null;
 
 const limiterCache = new Map<string, Ratelimit>();
 
@@ -78,7 +76,7 @@ export async function checkRateLimit(
   limit: number,
   windowMs: number,
 ): Promise<RateLimitResult> {
-  const prefix = key.split(':')[0] || 'rl';
+  const prefix = key.split(':')[0] ?? 'rl';
   const limiter = getUpstashLimiter(prefix, limit, windowMs);
   if (limiter) {
     const r = await limiter.limit(key);

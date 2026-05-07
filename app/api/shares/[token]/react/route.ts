@@ -21,7 +21,7 @@ interface RouteCtx {
 
 function readReactorId(req: Request): string | undefined {
   const cookie = req.headers.get('cookie') ?? '';
-  const m = cookie.match(new RegExp(`(?:^|;\\s*)${REACTOR_COOKIE}=([^;]+)`));
+  const m = new RegExp(`(?:^|;\\s*)${REACTOR_COOKIE}=([^;]+)`).exec(cookie);
   return m?.[1];
 }
 
@@ -53,7 +53,7 @@ export async function PUT(req: Request, { params }: RouteCtx) {
 
   let reactorId = readReactorId(req);
   const isNew = !reactorId;
-  if (!reactorId) reactorId = generateReactorId();
+  reactorId ??= generateReactorId();
 
   const rl = await checkRateLimit(clientKeyFromRequest(req, `react:${reactorId}`), 30, 60_000);
   if (!rl.allowed) {

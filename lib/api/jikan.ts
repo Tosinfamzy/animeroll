@@ -6,8 +6,8 @@ const ImagesSchema = z
   .object({
     jpg: z
       .object({
-        large_image_url: z.string().url().nullable().optional(),
-        image_url: z.string().url().nullable().optional(),
+        large_image_url: z.url().nullable().optional(),
+        image_url: z.url().nullable().optional(),
       })
       .optional(),
   })
@@ -57,9 +57,9 @@ const BASE = 'https://api.jikan.moe/v4';
 
 function parseDurationMinutes(d?: string | null): number | null {
   if (!d) return null;
-  const minMatch = d.match(/(\d+)\s*min/);
+  const minMatch = /(\d+)\s*min/.exec(d);
   if (minMatch) return Number(minMatch[1]);
-  const hrMatch = d.match(/(\d+)\s*hr/);
+  const hrMatch = /(\d+)\s*hr/.exec(d);
   if (hrMatch) return Number(hrMatch[1]) * 60;
   return null;
 }

@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithCount } from '@/lib/types';
 import { CreateListDialog } from './CreateListDialog';
 
@@ -28,30 +29,24 @@ export function AddToListMenu({ entryId, listIds }: Props) {
 
   const lists = useQuery<{ data: ListWithCount[] }>({
     queryKey: ['lists'],
-    queryFn: async () => {
-      const res = await fetch('/api/lists');
-      if (!res.ok) throw new Error('lists_load_failed');
-      return res.json();
-    },
+    queryFn: () => jsonFetch<{ data: ListWithCount[] }>('/api/lists'),
   });
 
   const toggle = useMutation({
-    mutationFn: async ({ listId, add }: { listId: string; add: boolean }) => {
+    mutationFn: ({ listId, add }: { listId: string; add: boolean }) => {
       const url = add
         ? `/api/lists/${listId}/entries`
         : `/api/lists/${listId}/entries?entryId=${encodeURIComponent(entryId)}`;
-      const res = await fetch(url, {
+      return jsonFetch<{ data: unknown }>(url, {
         method: add ? 'POST' : 'DELETE',
         headers: add ? { 'content-type': 'application/json' } : undefined,
         body: add ? JSON.stringify({ entryId }) : undefined,
       });
-      if (!res.ok) throw new Error(add ? 'add_failed' : 'remove_failed');
-      return res.json();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['entries'] });
-      qc.invalidateQueries({ queryKey: ['lists'] });
-      qc.invalidateQueries({ queryKey: ['list'] });
+      void qc.invalidateQueries({ queryKey: ['entries'] });
+      void qc.invalidateQueries({ queryKey: ['lists'] });
+      void qc.invalidateQueries({ queryKey: ['list'] });
     },
     onError: () => toast.error('Failed to update list membership'),
   });

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { searchAnime } from '@/lib/api/jikan';
 import { getCachedSearch, setCachedSearch } from '@/lib/api/jikan-cache';
 import { errorResponse, validationError } from '@/lib/api/errors';
+import { log } from '@/lib/logger';
 import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
 const QuerySchema = z.object({
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
     setCachedSearch(q, limit, results);
     return NextResponse.json({ data: results, cached: false }, { headers: rateLimitHeaders(rl) });
   } catch (err) {
-    console.error('[anime/search] upstream error', err);
+    log.error({ route: 'anime/search', q, err }, 'jikan_unreachable');
     return errorResponse(502, 'upstream_error', 'Anime search service is unreachable');
   }
 }

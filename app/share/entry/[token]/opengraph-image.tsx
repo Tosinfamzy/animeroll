@@ -16,7 +16,7 @@ export default async function OG({ params }: Props) {
   const { token } = await params;
   const loaded = await loadShareByToken(token);
 
-  if (!loaded || loaded.kind !== 'entry') {
+  if (loaded?.kind !== 'entry') {
     return new ImageResponse(
       (
         <div
@@ -61,7 +61,6 @@ export default async function OG({ params }: Props) {
         }}
       >
         {snapshot.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={snapshot.imageUrl}
             width={340}

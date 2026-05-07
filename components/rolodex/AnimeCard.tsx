@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import { STATUSES, type Status } from '@/lib/db/schema';
 import type { EntryWithAnime } from '@/lib/types';
 import { EntryDetailDialog } from './EntryDetailDialog';
@@ -23,15 +24,12 @@ export function AnimeCard({ entry, anime, listIds }: EntryWithAnime) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const updateStatus = useMutation({
-    mutationFn: async (status: Status) => {
-      const res = await fetch(`/api/entries/${entry.id}`, {
+    mutationFn: (status: Status) =>
+      jsonFetch<{ data: unknown }>(`/api/entries/${entry.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error('update_failed');
-      return res.json();
-    },
+      }),
     onMutate: async (status) => {
       await qc.cancelQueries({ queryKey: ['entries'] });
       const prev = qc.getQueryData<{ data: EntryWithAnime[] }>(['entries']);
@@ -48,21 +46,20 @@ export function AnimeCard({ entry, anime, listIds }: EntryWithAnime) {
       if (ctx?.prev) qc.setQueryData(['entries'], ctx.prev);
       toast.error('Failed to update status');
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['entries'] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['entries'] });
+    },
   });
 
   const archive = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/entries/${entry.id}`, {
+    mutationFn: () =>
+      jsonFetch<{ data: unknown }>(`/api/entries/${entry.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: !entry.archived }),
-      });
-      if (!res.ok) throw new Error('archive_failed');
-      return res.json();
-    },
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['entries'] });
+      void qc.invalidateQueries({ queryKey: ['entries'] });
       toast.success(entry.archived ? 'Unarchived' : 'Archived');
     },
     onError: () => toast.error('Failed to archive'),

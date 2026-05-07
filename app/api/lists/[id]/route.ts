@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { animeCache, entries, listEntries, lists } from '@/lib/db/schema';
 import { getCurrentUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
+import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 import { parseGenres } from '@/lib/shares';
 
 const ParamsSchema = z.object({ id: z.string().min(1) });
@@ -49,6 +50,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
 
 export async function PATCH(req: Request, { params }: RouteCtx) {
   const userId = getCurrentUserId();
+
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-patch'), 60, 60_000);
+  if (!rl.allowed) {
+    return errorResponse(429, 'rate_limited', 'Too many list edits', undefined, rateLimitHeaders(rl));
+  }
+
   const paramsParsed = ParamsSchema.safeParse(await params);
   if (!paramsParsed.success) return validationError(paramsParsed.error);
 
@@ -70,8 +77,14 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
   return NextResponse.json({ data: updated });
 }
 
-export async function DELETE(_req: Request, { params }: RouteCtx) {
+export async function DELETE(req: Request, { params }: RouteCtx) {
   const userId = getCurrentUserId();
+
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-delete'), 10, 60_000);
+  if (!rl.allowed) {
+    return errorResponse(429, 'rate_limited', 'Too many list deletes', undefined, rateLimitHeaders(rl));
+  }
+
   const parsed = ParamsSchema.safeParse(await params);
   if (!parsed.success) return validationError(parsed.error);
   const id = parsed.data.id;

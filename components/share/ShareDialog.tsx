@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { jsonFetch } from '@/lib/api/fetch-json';
 
 interface Props {
   kind: 'entry' | 'list';
@@ -40,8 +41,8 @@ export function ShareDialog({
   const [generated, setGenerated] = useState<{ url: string; token: string } | null>(null);
 
   const generate = useMutation({
-    mutationFn: async (): Promise<ShareResponse> => {
-      const res = await fetch('/api/shares', {
+    mutationFn: () =>
+      jsonFetch<ShareResponse>('/api/shares', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -50,15 +51,12 @@ export function ShareDialog({
           listId,
           take: take.trim() || undefined,
         }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json() as Promise<ShareResponse>;
-    },
+      }),
     onSuccess: ({ data }) => {
       setGenerated({ url: data.url, token: data.token });
-      navigator.clipboard.writeText(data.url).catch(() => {
-        // Clipboard may fail in some contexts; fall back silently.
-      });
+      // Clipboard may fail in some browsers (no secure context, denied perms);
+      // we still show the URL in the dialog so the user can copy manually.
+      void navigator.clipboard.writeText(data.url).catch(() => undefined);
       toast.success('Share link copied to clipboard');
     },
     onError: () => toast.error('Failed to create share'),
@@ -94,7 +92,7 @@ export function ShareDialog({
               <Button
                 variant="outline"
                 onClick={() => {
-                  navigator.clipboard.writeText(generated.url).catch(() => {});
+                  void navigator.clipboard.writeText(generated.url).catch(() => undefined);
                   toast.success('Copied');
                 }}
               >

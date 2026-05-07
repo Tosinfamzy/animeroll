@@ -4,17 +4,14 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 
 import { Card } from '@/components/ui/card';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithCount } from '@/lib/types';
 import { CreateListDialog } from './CreateListDialog';
 
 export function ListsView() {
   const q = useQuery<{ data: ListWithCount[] }>({
     queryKey: ['lists'],
-    queryFn: async () => {
-      const res = await fetch('/api/lists');
-      if (!res.ok) throw new Error('lists_load_failed');
-      return res.json();
-    },
+    queryFn: () => jsonFetch<{ data: ListWithCount[] }>('/api/lists'),
   });
 
   const lists = q.data?.data ?? [];

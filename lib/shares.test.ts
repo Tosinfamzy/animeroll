@@ -129,8 +129,10 @@ describe('buildListSnapshot', () => {
       userScore: 9,
       status: 'watching',
     });
-    expect(snap.entries[1].title).toBe('FMAB');
-    expect(snap.entries[1].status).toBe('completed');
+    const second = snap.entries[1];
+    expect(second).toBeDefined();
+    expect(second?.title).toBe('FMAB');
+    expect(second?.status).toBe('completed');
   });
 
   it('parses through ListSnapshotSchema', () => {

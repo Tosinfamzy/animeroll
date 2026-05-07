@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { lists, listEntries } from '@/lib/db/schema';
 import { getCurrentUserId } from '@/lib/auth';
 import { errorResponse, validationError } from '@/lib/api/errors';
+import { checkRateLimit, clientKeyFromRequest, rateLimitHeaders } from '@/lib/rate-limit';
 
 export async function GET() {
   const userId = getCurrentUserId();
@@ -29,6 +30,12 @@ const PostSchema = z.object({
 
 export async function POST(req: Request) {
   const userId = getCurrentUserId();
+
+  const rl = await checkRateLimit(clientKeyFromRequest(req, 'lists-create'), 30, 60_000);
+  if (!rl.allowed) {
+    return errorResponse(429, 'rate_limited', 'Too many lists created', undefined, rateLimitHeaders(rl));
+  }
+
   const body: unknown = await req.json().catch(() => null);
   const parsed = PostSchema.safeParse(body);
   if (!parsed.success) return validationError(parsed.error);

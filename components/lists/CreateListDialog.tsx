@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithCount } from '@/lib/types';
 
 interface Props {
@@ -44,20 +45,17 @@ export function CreateListDialog({
   const qc = useQueryClient();
 
   const create = useMutation({
-    mutationFn: async (): Promise<{ data: ListWithCount }> => {
-      const res = await fetch('/api/lists', {
+    mutationFn: () =>
+      jsonFetch<{ data: ListWithCount }>('/api/lists', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || null,
         }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
+      }),
     onSuccess: ({ data }) => {
-      qc.invalidateQueries({ queryKey: ['lists'] });
+      void qc.invalidateQueries({ queryKey: ['lists'] });
       toast.success(`Created “${data.list.name}”`);
       setOpen(false);
       setName('');

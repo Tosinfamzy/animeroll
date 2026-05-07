@@ -66,7 +66,7 @@ export function buildEntrySnapshot(entry: EntryRow, anime: AnimeCacheRow): Entry
 
 export function buildListSnapshot(
   list: ListRow,
-  members: Array<{ entry: EntryRow; anime: AnimeCacheRow }>,
+  members: { entry: EntryRow; anime: AnimeCacheRow }[],
 ): ListSnapshot {
   return {
     name: list.name,

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
+import { jsonFetch } from '@/lib/api/fetch-json';
 import { entryMatchesFilter, type EntryFilter } from '@/lib/filters';
 import type { EntryWithAnime } from '@/lib/types';
 import { AnimeCard } from './AnimeCard';
@@ -17,11 +18,7 @@ export function LibraryView({ archived = false }: Props) {
 
   const q = useQuery<{ data: EntryWithAnime[] }>({
     queryKey: ['entries'],
-    queryFn: async () => {
-      const res = await fetch('/api/entries');
-      if (!res.ok) throw new Error('load_failed');
-      return res.json();
-    },
+    queryFn: () => jsonFetch<{ data: EntryWithAnime[] }>('/api/entries'),
   });
 
   const all = q.data?.data ?? [];

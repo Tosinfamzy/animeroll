@@ -16,7 +16,7 @@ export default async function OG({ params }: Props) {
   const { token } = await params;
   const loaded = await loadShareByToken(token);
 
-  if (!loaded || loaded.kind !== 'list') {
+  if (loaded?.kind !== 'list') {
     return new ImageResponse(
       (
         <div
@@ -100,7 +100,6 @@ export default async function OG({ params }: Props) {
         ) : null}
         <div style={{ display: 'flex', gap: 16, marginTop: 'auto' }}>
           {covers.map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
               src={src}

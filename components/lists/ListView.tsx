@@ -10,6 +10,7 @@ import { AnimeCard } from '@/components/rolodex/AnimeCard';
 import { ShareDialog } from '@/components/share/ShareDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { jsonFetch } from '@/lib/api/fetch-json';
 import type { ListWithMembers } from '@/lib/types';
 
 interface Props {
@@ -25,28 +26,20 @@ export function ListView({ listId }: Props) {
 
   const q = useQuery<{ data: ListWithMembers }>({
     queryKey: ['list', listId],
-    queryFn: async () => {
-      const res = await fetch(`/api/lists/${listId}`);
-      if (res.status === 404) throw new Error('not_found');
-      if (!res.ok) throw new Error('load_failed');
-      return res.json();
-    },
+    queryFn: () => jsonFetch<{ data: ListWithMembers }>(`/api/lists/${listId}`),
     retry: false,
   });
 
   const rename = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await fetch(`/api/lists/${listId}`, {
+    mutationFn: (name: string) =>
+      jsonFetch<{ data: unknown }>(`/api/lists/${listId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
-      });
-      if (!res.ok) throw new Error('rename_failed');
-      return res.json();
-    },
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['list', listId] });
-      qc.invalidateQueries({ queryKey: ['lists'] });
+      void qc.invalidateQueries({ queryKey: ['list', listId] });
+      void qc.invalidateQueries({ queryKey: ['lists'] });
       setEditing(false);
       toast.success('Renamed');
     },
@@ -54,13 +47,10 @@ export function ListView({ listId }: Props) {
   });
 
   const remove = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/lists/${listId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('delete_failed');
-      return res.json();
-    },
+    mutationFn: () =>
+      jsonFetch<{ data: unknown }>(`/api/lists/${listId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['lists'] });
+      void qc.invalidateQueries({ queryKey: ['lists'] });
       toast.success('List deleted');
       router.push('/lists');
     },

@@ -19,7 +19,7 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const loaded = await loadShareByToken(token);
-  if (!loaded || loaded.kind !== 'entry') {
+  if (loaded?.kind !== 'entry') {
     return { title: 'Share not found · Anime Rolodex' };
   }
   const description = loaded.share.take ?? loaded.snapshot.synopsis ?? '';
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SharedEntryPage({ params }: Props) {
   const { token } = await params;
   const loaded = await loadShareByToken(token);
-  if (!loaded || loaded.kind !== 'entry') notFound();
+  if (loaded?.kind !== 'entry') notFound();
 
   const counts = await loadShareReactionCounts(token);
   const cookieStore = await cookies();
