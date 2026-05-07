@@ -1,4 +1,5 @@
 import { ClerkProvider, Show, UserButton } from '@clerk/nextjs';
+import { dark } from '@clerk/themes';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
@@ -21,13 +22,9 @@ export default function RootLayout({
     <ClerkProvider
       afterSignOutUrl="/"
       appearance={{
+        baseTheme: dark,
         variables: {
           colorPrimary: 'oklch(0.7 0.13 290)',
-          colorBackground: 'oklch(0.145 0 0)',
-          colorText: 'oklch(0.985 0 0)',
-          colorInputBackground: 'oklch(0.205 0 0)',
-          colorInputText: 'oklch(0.985 0 0)',
-          colorNeutral: 'oklch(0.985 0 0)',
         },
       }}
     >
