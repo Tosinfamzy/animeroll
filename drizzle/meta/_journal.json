@@ -15,6 +15,13 @@
       "when": 1778154035247,
       "tag": "0001_rainy_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778491699931,
+      "tag": "0002_cold_kylun",
+      "breakpoints": true
     }
   ]
 }

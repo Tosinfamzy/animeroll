@@ -17,9 +17,20 @@ import { checkRateLimit, rateLimitHeaders, userKeyFromRequest } from '@/lib/rate
 // Discriminated union so TS narrows entryId/listId based on kind without
 // needing non-null assertions at usage sites.
 const TakeSchema = z.string().trim().max(280).optional();
+const IncludeScoreSchema = z.boolean().optional();
 const BodySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('entry'), entryId: z.string().min(1), take: TakeSchema }),
-  z.object({ kind: z.literal('list'), listId: z.string().min(1), take: TakeSchema }),
+  z.object({
+    kind: z.literal('entry'),
+    entryId: z.string().min(1),
+    take: TakeSchema,
+    includeScore: IncludeScoreSchema,
+  }),
+  z.object({
+    kind: z.literal('list'),
+    listId: z.string().min(1),
+    take: TakeSchema,
+    includeScore: IncludeScoreSchema,
+  }),
 ]);
 
 export async function POST(req: Request) {
@@ -36,6 +47,7 @@ export async function POST(req: Request) {
 
   const trimmedTake = parsed.data.take?.trim();
   const take = trimmedTake && trimmedTake.length > 0 ? trimmedTake : null;
+  const includeScore = parsed.data.includeScore ?? true;
   const token = generateShareToken();
 
   if (parsed.data.kind === 'entry') {
@@ -54,6 +66,7 @@ export async function POST(req: Request) {
       kind: 'entry',
       entryId: entry.id,
       take,
+      includeScore,
       snapshot: JSON.stringify(snapshot),
       createdBy: userId,
     });
@@ -76,6 +89,7 @@ export async function POST(req: Request) {
       kind: 'list',
       listId: list.id,
       take,
+      includeScore,
       snapshot: JSON.stringify(snapshot),
       createdBy: userId,
     });

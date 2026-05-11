@@ -102,6 +102,10 @@ export const shares = sqliteTable(
     entryId: text('entry_id').references(() => entries.id, { onDelete: 'cascade' }),
     listId: text('list_id').references(() => lists.id, { onDelete: 'cascade' }),
     take: text('take'),
+    // Public-render gate for the snapshot's user_score. The snapshot itself
+    // still carries the number (immutable), but the creator can hide it from
+    // recipients via this flag. Default true preserves v1 behavior.
+    includeScore: boolean('include_score').notNull().default(true),
     snapshot: text('snapshot').notNull(),
     createdBy: text('created_by').notNull(),
     createdAt: timestampMs('created_at').notNull().default(nowMs),

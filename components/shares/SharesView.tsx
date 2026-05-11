@@ -50,6 +50,34 @@ export function SharesView() {
     onError: () => toast.error('Failed to update take'),
   });
 
+  const toggleScore = useMutation({
+    mutationFn: ({ token, includeScore }: { token: string; includeScore: boolean }) =>
+      jsonFetch<{ data: { token: string; includeScore: boolean } }>(`/api/shares/${token}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ includeScore }),
+      }),
+    onMutate: async ({ token, includeScore }) => {
+      await qc.cancelQueries({ queryKey: ['my-shares'] });
+      const previous = qc.getQueryData<{ data: MyShareRow[] }>(['my-shares']);
+      if (previous) {
+        qc.setQueryData<{ data: MyShareRow[] }>(['my-shares'], {
+          data: previous.data.map((row) =>
+            row.token === token ? { ...row, includeScore } : row,
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(['my-shares'], ctx.previous);
+      toast.error('Failed to update');
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['my-shares'] });
+    },
+  });
+
   const resnapshot = useMutation({
     mutationFn: (token: string) =>
       jsonFetch<{ data: { token: string; resnapshottedAt: string } }>(
@@ -112,10 +140,14 @@ export function SharesView() {
                 }}
                 onResnapshot={() => resnapshot.mutate(r.token)}
                 onEditTake={(take) => editTake.mutate({ token: r.token, take })}
+                onToggleScore={(includeScore) =>
+                  toggleScore.mutate({ token: r.token, includeScore })
+                }
                 pending={
                   (revoke.isPending && revoke.variables === r.token) ||
                   (resnapshot.isPending && resnapshot.variables === r.token) ||
-                  (editTake.isPending && editTake.variables.token === r.token)
+                  (editTake.isPending && editTake.variables.token === r.token) ||
+                  (toggleScore.isPending && toggleScore.variables.token === r.token)
                 }
               />
             ))}
@@ -144,12 +176,14 @@ function ShareRow({
   onRevoke,
   onResnapshot,
   onEditTake,
+  onToggleScore,
   pending,
 }: {
   row: MyShareRow;
   onRevoke?: () => void;
   onResnapshot?: () => void;
   onEditTake?: (take: string | null) => void;
+  onToggleScore?: (includeScore: boolean) => void;
   pending: boolean;
 }) {
   const isRevoked = row.revokedAt !== null;
@@ -307,6 +341,20 @@ function ShareRow({
           ) : (
             <span className="opacity-70">No reactions yet</span>
           )}
+          {onToggleScore ? (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="size-3.5 accent-primary"
+                checked={row.includeScore}
+                disabled={pending}
+                onChange={(e) => onToggleScore(e.target.checked)}
+              />
+              <span>
+                {row.kind === 'list' ? 'Show scores' : 'Show my score'}
+              </span>
+            </label>
+          ) : null}
         </div>
       </div>
 

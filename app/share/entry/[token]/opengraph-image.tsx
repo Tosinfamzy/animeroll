@@ -40,6 +40,7 @@ export default async function OG({ params }: Props) {
 
   const { snapshot } = loaded;
   const take = loaded.share.take;
+  const showScore = loaded.share.includeScore && snapshot.userScore !== null;
   const meta = [
     snapshot.year ? String(snapshot.year) : null,
     snapshot.episodes ? `${snapshot.episodes} eps` : null,
@@ -123,7 +124,7 @@ export default async function OG({ params }: Props) {
               fontSize: 28,
             }}
           >
-            {snapshot.userScore ? (
+            {showScore ? (
               <span
                 style={{
                   background: OG_ACCENT,
@@ -134,7 +135,7 @@ export default async function OG({ params }: Props) {
                   display: 'flex',
                 }}
               >
-                {`MY SCORE ${snapshot.userScore}/10`}
+                {`MY SCORE ${String(snapshot.userScore)}/10`}
               </span>
             ) : null}
             <span style={{ color: OG_MUTED, display: 'flex' }}>shared a take</span>

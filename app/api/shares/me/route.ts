@@ -10,6 +10,7 @@ interface MyShareRow {
   token: string;
   kind: 'entry' | 'list';
   take: string | null;
+  includeScore: boolean;
   createdAt: string;
   revokedAt: string | null;
   url: string;
@@ -46,6 +47,7 @@ export async function GET() {
       token: r.share.token,
       kind: r.share.kind,
       take: r.share.take,
+      includeScore: r.share.includeScore,
       createdAt: r.share.createdAt.toISOString(),
       revokedAt: r.share.revokedAt?.toISOString() ?? null,
       url: shareUrl(r.share.token, r.share.kind),

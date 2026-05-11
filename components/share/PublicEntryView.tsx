@@ -10,6 +10,7 @@ interface Props {
   token: string;
   snapshot: EntrySnapshot;
   take: string | null;
+  includeScore: boolean;
   counts: { heart: number; eyes: number; nope: number };
   mine: 'heart' | 'eyes' | 'nope' | null;
   viewerAuthed: boolean;
@@ -21,6 +22,7 @@ export function PublicEntryView({
   token,
   snapshot,
   take,
+  includeScore,
   counts,
   mine,
   viewerAuthed,
@@ -52,7 +54,7 @@ export function PublicEntryView({
 
           <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
             <StatusBadge status={snapshot.status} />
-            {snapshot.userScore ? (
+            {includeScore && snapshot.userScore ? (
               <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-200 border border-amber-500/30">
                 ★ {snapshot.userScore}/10
               </span>

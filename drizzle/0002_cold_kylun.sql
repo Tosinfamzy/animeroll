@@ -1,0 +1,1 @@
+ALTER TABLE `shares` ADD `include_score` integer DEFAULT true NOT NULL;

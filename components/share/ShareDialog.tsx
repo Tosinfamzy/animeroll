@@ -38,6 +38,7 @@ export function ShareDialog({
   onOpenChange,
 }: Props) {
   const [take, setTake] = useState('');
+  const [includeScore, setIncludeScore] = useState(true);
   const [generated, setGenerated] = useState<{ url: string; token: string } | null>(null);
 
   const generate = useMutation({
@@ -50,6 +51,7 @@ export function ShareDialog({
           entryId,
           listId,
           take: take.trim() || undefined,
+          includeScore,
         }),
       }),
     onSuccess: ({ data }) => {
@@ -64,6 +66,7 @@ export function ShareDialog({
 
   const reset = () => {
     setTake('');
+    setIncludeScore(true);
     setGenerated(null);
   };
 
@@ -134,6 +137,18 @@ export function ShareDialog({
               />
               <span className="text-xs text-muted-foreground tabular-nums self-end">
                 {take.length}/280
+              </span>
+            </label>
+            <label className="flex items-center gap-2 text-sm select-none cursor-pointer">
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={includeScore}
+                onChange={(e) => setIncludeScore(e.target.checked)}
+              />
+              <span>Show my score{kind === 'list' ? 's' : ''}</span>
+              <span className="text-xs text-muted-foreground">
+                Recipients see {kind === 'list' ? 'each per-entry score' : 'your 1–10'} if checked.
               </span>
             </label>
             <div className="flex justify-end gap-2">

@@ -59,6 +59,7 @@ export default async function SharedEntryPage({ params }: Props) {
       token={token}
       snapshot={loaded.snapshot}
       take={loaded.share.take}
+      includeScore={loaded.share.includeScore}
       counts={counts}
       mine={mine}
       viewerAuthed={viewerAuthed}

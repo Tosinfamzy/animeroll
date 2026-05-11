@@ -10,6 +10,7 @@ interface Props {
   token: string;
   snapshot: ListSnapshot;
   take: string | null;
+  includeScore: boolean;
   counts: { heart: number; eyes: number; nope: number };
   mine: 'heart' | 'eyes' | 'nope' | null;
   viewerAuthed: boolean;
@@ -21,6 +22,7 @@ export function PublicListView({
   token,
   snapshot,
   take,
+  includeScore,
   counts,
   mine,
   viewerAuthed,
@@ -72,7 +74,7 @@ export function PublicListView({
                 </p>
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <StatusBadge status={m.status} className="text-[10px] px-1.5 py-0" />
-                  {m.userScore ? (
+                  {includeScore && m.userScore ? (
                     <span className="text-amber-300/90">★ {m.userScore}/10</span>
                   ) : null}
                 </div>

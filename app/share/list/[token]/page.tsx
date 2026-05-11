@@ -62,6 +62,7 @@ export default async function SharedListPage({ params }: Props) {
       token={token}
       snapshot={loaded.snapshot}
       take={loaded.share.take}
+      includeScore={loaded.share.includeScore}
       counts={counts}
       mine={mine}
       viewerAuthed={viewerAuthed}
