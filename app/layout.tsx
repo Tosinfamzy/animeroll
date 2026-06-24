@@ -58,6 +58,9 @@ export default function RootLayout({
                   <Link href="/archive" className="hover:text-foreground transition-colors">
                     Archive
                   </Link>
+                  <Link href="/profile" className="hover:text-foreground transition-colors">
+                    Profile
+                  </Link>
                   <UserButton />
                 </Show>
                 <Show when="signed-out">

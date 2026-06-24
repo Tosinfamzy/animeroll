@@ -160,6 +160,24 @@ export const shareViews = sqliteTable(
   ],
 );
 
+// Opt-in public profile. A user has at most one (userId PK). `handle` is stored
+// normalized (lowercase) and unique. Profiles are private until isPublic flips
+// to true; /u/<handle> only resolves public ones and only surfaces non-revoked
+// shares — so the immutable-snapshot privacy rules carry over unchanged.
+export const profiles = sqliteTable(
+  'profiles',
+  {
+    userId: text('user_id').primaryKey(),
+    handle: text('handle').notNull(),
+    displayName: text('display_name'),
+    bio: text('bio'),
+    isPublic: boolean('is_public').notNull().default(false),
+    createdAt: timestampMs('created_at').notNull().default(nowMs),
+    updatedAt: timestampMs('updated_at').notNull().default(nowMs),
+  },
+  (t) => [uniqueIndex('profiles_handle_unique').on(t.handle)],
+);
+
 export type AnimeCacheRow = typeof animeCache.$inferSelect;
 export type EntryRow = typeof entries.$inferSelect;
 export type ListRow = typeof lists.$inferSelect;
@@ -167,3 +185,4 @@ export type ListEntryRow = typeof listEntries.$inferSelect;
 export type ShareRow = typeof shares.$inferSelect;
 export type ReactionRow = typeof reactions.$inferSelect;
 export type ShareViewRow = typeof shareViews.$inferSelect;
+export type ProfileRow = typeof profiles.$inferSelect;

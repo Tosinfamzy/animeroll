@@ -9,6 +9,8 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
  * - `/share/entry/(.*)`,
  *   `/share/list/(.*)`       Recipient-facing share pages + colocated
  *                            opengraph-image routes. Public by design.
+ * - `/u/(.*)`                Public profile pages (only resolve when the
+ *                            owner has opted in via isPublic).
  * - `/api/shares/(.*)/react` Anonymous reactions, keyed by reactor cookie.
  * - `/api/shares/(.*)/view`  Anonymous view beacon from public share pages.
  * - `/api/anime/(.*)`        Jikan proxy + cache fetch (IP-rate-limited).
@@ -22,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/share/entry/(.*)',
   '/share/list/(.*)',
+  '/u/(.*)',
   '/api/shares/(.*)/react',
   '/api/shares/(.*)/view',
   '/api/anime/(.*)',
