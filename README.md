@@ -100,14 +100,17 @@ Optional: `node scripts/seed.mjs` populates the library with 25 popular shows.
 npm run test:run
 ```
 
-29 unit tests covering filter predicates, rate-limit token bucket math, share token generation, snapshot builders, and Zod schema parsing. Playwright is set up but no E2E tests written yet — manual smoke covers the end-to-end share loop today.
+70 unit tests (Vitest) covering filter predicates, rate-limit token-bucket math + store selection, share token generation, snapshot builders, reaction/stats aggregation, AniList import transforms, recommendation ranking, and profile-handle validation. Playwright covers an unauthenticated smoke suite plus an authed share-loop spec. CI (GitHub Actions) runs lint, typecheck, the unit suite, and a production build on every PR; the suite requires Node ≥22 (see `.nvmrc`).
 
 ## Intentionally not built
 
-- Real auth, friend graphs, activity feeds (the share-link mechanic doesn't need them)
-- Manual list reordering UI (the `position` column is reserved)
-- Re-snapshot a share without creating a new one
-- Creator-side reaction dashboard
-- MAL/AniList import
+- Friend graphs / follow relationships / activity feeds (the share-link mechanic and opt-in `/u/<handle>` profiles cover discovery without them)
+- Collaborative-filtering recommendations (Discover is content-based: taste genres + MAL co-recommendation edges)
+- Dynamic OG image for `/u/<handle>` profiles (metadata OG only for now)
 
 These are additive; the data model accommodates each without schema churn.
+
+Since the original cut, the following shipped: MyAnimeList **and** AniList import,
+manual list reordering, re-snapshot, a creator-side reaction dashboard with
+opt-in view analytics, a stats / year-in-review page, content-based
+recommendations, and opt-in public profiles.
