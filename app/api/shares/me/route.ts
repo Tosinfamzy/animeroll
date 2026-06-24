@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
-import { reactions, shares } from '@/lib/db/schema';
+import { reactions, shares, shareViews } from '@/lib/db/schema';
 import { requireUserId } from '@/lib/auth';
 import { parseSnapshot, shareUrl } from '@/lib/shares';
 
@@ -15,6 +15,7 @@ interface MyShareRow {
   revokedAt: string | null;
   url: string;
   counts: { heart: number; eyes: number; nope: number };
+  viewCount: number;
   preview:
     | { kind: 'entry'; title: string; imageUrl: string; userScore: number | null }
     | { kind: 'list'; name: string; entryCount: number; covers: string[] };
@@ -34,6 +35,11 @@ export async function GET() {
       ),
       nopeCount: sql<number>`COUNT(CASE WHEN ${reactions.kind} = 'nope' THEN 1 END)`.as(
         'nope_count',
+      ),
+      // Scalar subquery — joining share_views here too would multiply the
+      // reaction COUNTs (cartesian product across the two child tables).
+      viewCount: sql<number>`(SELECT COUNT(*) FROM ${shareViews} WHERE ${shareViews.shareToken} = ${shares.token})`.as(
+        'view_count',
       ),
     })
     .from(shares)
@@ -56,6 +62,7 @@ export async function GET() {
         eyes: r.eyesCount,
         nope: r.nopeCount,
       },
+      viewCount: r.viewCount,
     };
     if (r.share.kind === 'entry') {
       const snap = parseSnapshot('entry', r.share.snapshot);

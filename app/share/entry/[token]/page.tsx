@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 
 import { PublicEntryView } from '@/components/share/PublicEntryView';
+import { RecordShareView } from '@/components/share/RecordShareView';
 import {
   loadReactionFor,
   loadShareByToken,
@@ -55,16 +56,19 @@ export default async function SharedEntryPage({ params }: Props) {
   const viewerOwnsShare = userId !== null && userId === loaded.share.createdBy;
 
   return (
-    <PublicEntryView
-      token={token}
-      snapshot={loaded.snapshot}
-      take={loaded.share.take}
-      includeScore={loaded.share.includeScore}
-      counts={counts}
-      mine={mine}
-      viewerAuthed={viewerAuthed}
-      viewerOwnsShare={viewerOwnsShare}
-      currentPath={`/share/entry/${token}`}
-    />
+    <>
+      <RecordShareView token={token} skip={viewerOwnsShare} />
+      <PublicEntryView
+        token={token}
+        snapshot={loaded.snapshot}
+        take={loaded.share.take}
+        includeScore={loaded.share.includeScore}
+        counts={counts}
+        mine={mine}
+        viewerAuthed={viewerAuthed}
+        viewerOwnsShare={viewerOwnsShare}
+        currentPath={`/share/entry/${token}`}
+      />
+    </>
   );
 }

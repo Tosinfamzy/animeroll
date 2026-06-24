@@ -185,6 +185,10 @@ function ReactionRollup({ rows }: { rows: MyShareRow[] }) {
   const summary = summarizeReactions(rows);
   if (summary.totalShares === 0) return null;
 
+  const totalViews = rows.reduce((sum, r) => sum + r.viewCount, 0);
+  const reactionRate =
+    totalViews > 0 ? Math.round((summary.totalReactions / totalViews) * 100) : null;
+
   const top = summary.topShareToken
     ? rows.find((r) => r.token === summary.topShareToken)
     : undefined;
@@ -196,10 +200,11 @@ function ReactionRollup({ rows }: { rows: MyShareRow[] }) {
 
   return (
     <Card className="p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <Stat label="Opens" value={totalViews} />
       <Stat label="Reactions" value={summary.totalReactions} />
       <Stat
-        label="Shares with reactions"
-        value={`${summary.sharesWithReactions.toString()} / ${summary.totalShares.toString()}`}
+        label="Reaction rate"
+        value={reactionRate === null ? '—' : `${reactionRate.toString()}%`}
       />
       <div className="flex items-center gap-3 text-sm">
         <span className="text-xs uppercase tracking-wider text-muted-foreground">By kind</span>
@@ -420,6 +425,9 @@ function ShareRow({
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span>{relativeTime(row.createdAt)}</span>
+          <span aria-label={`${row.viewCount.toString()} opens`}>
+            {row.viewCount} {row.viewCount === 1 ? 'open' : 'opens'}
+          </span>
           {total > 0 ? (
             <button
               type="button"

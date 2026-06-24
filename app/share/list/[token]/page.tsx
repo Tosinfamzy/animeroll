@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 
 import { PublicListView } from '@/components/share/PublicListView';
+import { RecordShareView } from '@/components/share/RecordShareView';
 import {
   loadReactionFor,
   loadShareByToken,
@@ -58,16 +59,19 @@ export default async function SharedListPage({ params }: Props) {
   const viewerOwnsShare = userId !== null && userId === loaded.share.createdBy;
 
   return (
-    <PublicListView
-      token={token}
-      snapshot={loaded.snapshot}
-      take={loaded.share.take}
-      includeScore={loaded.share.includeScore}
-      counts={counts}
-      mine={mine}
-      viewerAuthed={viewerAuthed}
-      viewerOwnsShare={viewerOwnsShare}
-      currentPath={`/share/list/${token}`}
-    />
+    <>
+      <RecordShareView token={token} skip={viewerOwnsShare} />
+      <PublicListView
+        token={token}
+        snapshot={loaded.snapshot}
+        take={loaded.share.take}
+        includeScore={loaded.share.includeScore}
+        counts={counts}
+        mine={mine}
+        viewerAuthed={viewerAuthed}
+        viewerOwnsShare={viewerOwnsShare}
+        currentPath={`/share/list/${token}`}
+      />
+    </>
   );
 }

@@ -139,9 +139,31 @@ export const reactions = sqliteTable(
   ],
 );
 
+// One row per (share, viewer). `viewerKey` is the anonymous reactor cookie
+// when present, else a salted hash of IP+UA — never a raw IP. The unique index
+// makes a refresh a no-op (the beacon upserts `viewedAt`), so the row count is
+// the share's unique-viewer total. Owner self-views are not recorded.
+export const shareViews = sqliteTable(
+  'share_views',
+  {
+    id: text('id').primaryKey(),
+    shareToken: text('share_token')
+      .notNull()
+      .references(() => shares.token, { onDelete: 'cascade' }),
+    viewerKey: text('viewer_key').notNull(),
+    firstViewedAt: timestampMs('first_viewed_at').notNull().default(nowMs),
+    viewedAt: timestampMs('viewed_at').notNull().default(nowMs),
+  },
+  (t) => [
+    uniqueIndex('share_views_share_viewer_unique').on(t.shareToken, t.viewerKey),
+    index('share_views_share_idx').on(t.shareToken),
+  ],
+);
+
 export type AnimeCacheRow = typeof animeCache.$inferSelect;
 export type EntryRow = typeof entries.$inferSelect;
 export type ListRow = typeof lists.$inferSelect;
 export type ListEntryRow = typeof listEntries.$inferSelect;
 export type ShareRow = typeof shares.$inferSelect;
 export type ReactionRow = typeof reactions.$inferSelect;
+export type ShareViewRow = typeof shareViews.$inferSelect;
