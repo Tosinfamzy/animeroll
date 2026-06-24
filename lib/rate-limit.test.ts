@@ -1,6 +1,42 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { checkRateLimit } from './rate-limit';
+import { checkRateLimit, selectStore } from './rate-limit';
+
+describe('selectStore', () => {
+  it('chooses redis when UPSTASH_* env is present', () => {
+    const choice = selectStore({
+      UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+      UPSTASH_REDIS_REST_TOKEN: 'tok',
+    });
+    expect(choice).toEqual({
+      kind: 'redis',
+      url: 'https://example.upstash.io',
+      token: 'tok',
+    });
+  });
+
+  it('accepts Vercel KV_* aliases', () => {
+    const choice = selectStore({
+      KV_REST_API_URL: 'https://kv.vercel-storage.com',
+      KV_REST_API_TOKEN: 'kvtok',
+    });
+    expect(choice).toEqual({
+      kind: 'redis',
+      url: 'https://kv.vercel-storage.com',
+      token: 'kvtok',
+    });
+  });
+
+  it('falls back to memory when no credentials are present', () => {
+    expect(selectStore({})).toEqual({ kind: 'memory' });
+  });
+
+  it('falls back to memory when only one half of the pair is set', () => {
+    expect(
+      selectStore({ UPSTASH_REDIS_REST_URL: 'https://x' }),
+    ).toEqual({ kind: 'memory' });
+  });
+});
 
 describe('checkRateLimit (in-memory fallback)', () => {
   beforeEach(() => {

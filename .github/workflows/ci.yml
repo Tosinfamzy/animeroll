@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same PR/branch cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Lint + typecheck + unit tests + production build. Requires no secrets:
+  # every route is dynamic, so a placeholder Clerk key is enough to build, and
+  # the DB is an ephemeral SQLite file. Always runs, including on forks.
+  fast:
+    name: lint · typecheck · unit · build
+    runs-on: ubuntu-latest
+    env:
+      # Throwaway local SQLite; DATABASE_AUTH_TOKEN is intentionally UNSET
+      # (the turso dialect rejects an empty string for file: URLs).
+      DATABASE_URL: file:./ci.db
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      # Well-known Clerk example publishable key (decodes to clerk.example.com$).
+      # The app boots ClerkProvider at build; no real auth happens here.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+      CLERK_SECRET_KEY: sk_test_ci_placeholder_build_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:run
+      # `prebuild` runs drizzle-kit migrate against the ephemeral DB.
+      - run: npm run build
+
+  # Resolve whether Clerk test secrets exist, without leaking their values.
+  # `secrets.* != ''` evaluates to the literal string "true"/"false".
+  detect-secrets:
+    name: detect e2e secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_clerk: ${{ steps.check.outputs.has_clerk }}
+    steps:
+      - id: check
+        run: echo "has_clerk=${{ secrets.E2E_CLERK_PUBLISHABLE_KEY != '' && secrets.E2E_CLERK_SECRET_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  # Unauthenticated Playwright smoke against a production server. Skipped when
+  # Clerk secrets are absent (forks, or a repo that hasn't configured them) so
+  # the workflow stays green rather than failing for want of credentials.
+  e2e-smoke:
+    name: e2e smoke (unauthenticated)
+    needs: detect-secrets
+    if: needs.detect-secrets.outputs.has_clerk == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      E2E_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # Start the production server; E2E_BASE_URL set => Playwright won't manage
+      # its own webServer, so we boot one and wait for it.
+      - name: Start server
+        run: |
+          npm run start &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000 >/dev/null && exit 0
+            sleep 1
+          done
+          echo "server did not become ready" >&2
+          exit 1
+      - run: npm run test:e2e:smoke
+      - name: Stop server
+        if: always()
+        run: kill "$SERVER_PID" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

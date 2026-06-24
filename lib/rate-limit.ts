@@ -3,20 +3,57 @@ import 'server-only';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
+import { log } from './logger';
+
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfterMs: number;
 }
 
-// Vercel's "Upstash for Redis" marketplace integration injects KV_* names;
-// a direct Upstash setup uses UPSTASH_REDIS_REST_*. Accept either.
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-const upstashToken =
-  process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+/**
+ * Pure, testable resolution of which backing store the limiter should use.
+ *
+ * Vercel's "Upstash for Redis" marketplace integration injects KV_* names;
+ * a direct Upstash setup uses UPSTASH_REDIS_REST_*. Accept either. Exported so
+ * a unit test can prove Redis is chosen when env is present and memory
+ * otherwise — without constructing a real client.
+ */
+export type StoreChoice =
+  | { kind: 'redis'; url: string; token: string }
+  | { kind: 'memory' };
+
+export function selectStore(env: Record<string, string | undefined>): StoreChoice {
+  const url = env.UPSTASH_REDIS_REST_URL ?? env.KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN ?? env.KV_REST_API_TOKEN;
+  if (url && token) return { kind: 'redis', url, token };
+  return { kind: 'memory' };
+}
+
+const store = selectStore(process.env);
+
+// Fail loud on a misconfigured production deploy. The in-memory fallback is a
+// per-invocation no-op on serverless, so silently using it in prod means every
+// limiter is effectively disabled with zero signal. Set
+// RATE_LIMIT_REQUIRE_REDIS=1 to hard-fail module init (and thus the deploy's
+// health check) instead of merely logging.
+if (process.env.NODE_ENV === 'production' && store.kind === 'memory') {
+  const msg =
+    'rate-limit: no Upstash/KV credentials in production — limiters are running ' +
+    'on the per-invocation in-memory fallback and are effectively DISABLED. ' +
+    'Provision Upstash Redis (or Vercel KV) and set UPSTASH_REDIS_REST_URL/_TOKEN.';
+  if (process.env.RATE_LIMIT_REQUIRE_REDIS === '1') {
+    throw new Error(msg);
+  }
+  log.error({ store: 'memory' }, msg);
+}
 
 const redis: Redis | null =
-  upstashUrl && upstashToken ? new Redis({ url: upstashUrl, token: upstashToken }) : null;
+  store.kind === 'redis' ? new Redis({ url: store.url, token: store.token }) : null;
+
+// Emit one structured warning the first time the in-memory path actually serves
+// a request, so an unexpected fallback in any deployed environment is visible.
+let fallbackWarned = false;
 
 const limiterCache = new Map<string, Ratelimit>();
 
@@ -85,6 +122,10 @@ export async function checkRateLimit(
       remaining: r.remaining,
       retryAfterMs: r.success ? 0 : Math.max(0, r.reset - Date.now()),
     };
+  }
+  if (!fallbackWarned) {
+    fallbackWarned = true;
+    log.warn({ store: 'memory' }, 'rate-limit: serving from in-memory fallback');
   }
   return inMemoryCheck(key, limit, windowMs);
 }
