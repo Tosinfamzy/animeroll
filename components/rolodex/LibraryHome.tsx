@@ -1,5 +1,5 @@
 import { AddAnimeDialog } from '@/components/rolodex/AddAnimeDialog';
-import { ImportFromMalDialog } from '@/components/rolodex/ImportFromMalDialog';
+import { ImportLibraryDialog } from '@/components/rolodex/ImportLibraryDialog';
 import { LibraryView } from '@/components/rolodex/LibraryView';
 
 export function LibraryHome() {
@@ -12,8 +12,9 @@ export function LibraryHome() {
             Everything you&rsquo;re tracking, in one place.
           </p>
         </div>
-        <div className="flex gap-2">
-          <ImportFromMalDialog />
+        <div className="flex gap-2 flex-wrap">
+          <ImportLibraryDialog source="mal" />
+          <ImportLibraryDialog source="anilist" />
           <AddAnimeDialog />
         </div>
       </div>

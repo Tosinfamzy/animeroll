@@ -26,11 +26,32 @@ const FILTER_LABELS: Record<Filter, string> = {
   plan: 'Plan to Watch',
 };
 
+export type ImportSource = 'mal' | 'anilist';
+
+const SOURCES: Record<
+  ImportSource,
+  { label: string; full: string; endpoint: string; placeholder: string }
+> = {
+  mal: {
+    label: 'MAL',
+    full: 'MyAnimeList',
+    endpoint: '/api/import/mal',
+    placeholder: 'e.g. xinil',
+  },
+  anilist: {
+    label: 'AniList',
+    full: 'AniList',
+    endpoint: '/api/import/anilist',
+    placeholder: 'e.g. josh',
+  },
+};
+
 interface ImportResponse {
   data: { added: number; skipped: number; total: number; username: string };
 }
 
-export function ImportFromMalDialog() {
+export function ImportLibraryDialog({ source }: { source: ImportSource }) {
+  const cfg = SOURCES[source];
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -38,7 +59,7 @@ export function ImportFromMalDialog() {
 
   const importMut = useMutation({
     mutationFn: () =>
-      jsonFetch<ImportResponse>('/api/import/mal', {
+      jsonFetch<ImportResponse>(cfg.endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), filter }),
@@ -56,11 +77,11 @@ export function ImportFromMalDialog() {
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : '';
       if (msg.includes('404')) {
-        toast.error(`MAL user "${username.trim()}" not found`);
+        toast.error(`${cfg.full} user "${username.trim()}" not found`);
       } else if (msg.includes('429')) {
         toast.error('Slow down — too many imports. Try again in a minute.');
       } else {
-        toast.error('Import failed. MAL might be having a moment.');
+        toast.error(`Import failed. ${cfg.full} might be having a moment.`);
       }
     },
   });
@@ -76,12 +97,12 @@ export function ImportFromMalDialog() {
         if (!v && !importMut.isPending) setUsername('');
       }}
     >
-      <DialogTrigger render={<Button variant="outline">Import from MAL</Button>} />
+      <DialogTrigger render={<Button variant="outline">Import from {cfg.label}</Button>} />
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Import from MyAnimeList</DialogTitle>
+          <DialogTitle>Import from {cfg.full}</DialogTitle>
           <DialogDescription>
-            Pulls a public MAL list into your library. Existing entries are kept
+            Pulls a public {cfg.full} list into your library. Existing entries are kept
             untouched — only new ones are added.
           </DialogDescription>
         </DialogHeader>
@@ -93,10 +114,10 @@ export function ImportFromMalDialog() {
           }}
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">MAL username</span>
+            <span className="text-xs text-muted-foreground">{cfg.full} username</span>
             <Input
               autoFocus
-              placeholder="e.g. xinil"
+              placeholder={cfg.placeholder}
               value={username}
               maxLength={40}
               onChange={(e) => setUsername(e.target.value)}
