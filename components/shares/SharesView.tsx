@@ -9,11 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { jsonFetch } from '@/lib/api/fetch-json';
+import { summarizeReactions } from '@/lib/reactions';
 import { cn } from '@/lib/utils';
 
 import type { MyShareRow } from '@/app/api/shares/me/route';
 
 const ICONS = { heart: '❤️', eyes: '👀', nope: '🚫' } as const;
+
+interface ReactionDrillDown {
+  token: string;
+  counts: { heart: number; eyes: number; nope: number };
+  recent: { kind: 'heart' | 'eyes' | 'nope'; at: string }[];
+  truncated: boolean;
+}
 
 export function SharesView() {
   const qc = useQueryClient();
@@ -117,6 +125,8 @@ export function SharesView() {
 
   return (
     <div className="flex flex-col gap-8">
+      <ReactionRollup rows={active} />
+
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Active ({active.length})
@@ -171,6 +181,89 @@ export function SharesView() {
   );
 }
 
+function ReactionRollup({ rows }: { rows: MyShareRow[] }) {
+  const summary = summarizeReactions(rows);
+  if (summary.totalShares === 0) return null;
+
+  const top = summary.topShareToken
+    ? rows.find((r) => r.token === summary.topShareToken)
+    : undefined;
+  const topTitle = top
+    ? top.preview.kind === 'entry'
+      ? top.preview.title
+      : top.preview.name
+    : null;
+
+  return (
+    <Card className="p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <Stat label="Reactions" value={summary.totalReactions} />
+      <Stat
+        label="Shares with reactions"
+        value={`${summary.sharesWithReactions.toString()} / ${summary.totalShares.toString()}`}
+      />
+      <div className="flex items-center gap-3 text-sm">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">By kind</span>
+        <span>{ICONS.heart} {summary.byKind.heart}</span>
+        <span>{ICONS.eyes} {summary.byKind.eyes}</span>
+        <span>{ICONS.nope} {summary.byKind.nope}</span>
+      </div>
+      {topTitle ? (
+        <div className="text-sm min-w-0">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground mr-2">
+            Most reactions
+          </span>
+          <span className="font-medium truncate">{topTitle}</span>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xl font-semibold tabular-nums leading-none">{value}</span>
+      <span className="text-xs uppercase tracking-wider text-muted-foreground mt-1">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ReactionActivity({ token }: { token: string }) {
+  const q = useQuery<{ data: ReactionDrillDown }>({
+    queryKey: ['share-reactions', token],
+    queryFn: () => jsonFetch<{ data: ReactionDrillDown }>(`/api/shares/${token}/reactions`),
+    staleTime: 30_000,
+  });
+
+  if (q.isLoading) {
+    return <p className="text-xs text-muted-foreground">Loading activity…</p>;
+  }
+  if (q.isError) {
+    return <p className="text-xs text-destructive">Couldn’t load reaction activity.</p>;
+  }
+  const recent = q.data?.data.recent ?? [];
+  if (recent.length === 0) {
+    return <p className="text-xs text-muted-foreground">No reactions on this share yet.</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-1">
+      {recent.map((r, i) => (
+        <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span aria-hidden>{ICONS[r.kind]}</span>
+          <span className="capitalize">{r.kind}</span>
+          <span className="opacity-60">·</span>
+          <span>{relativeTime(r.at)}</span>
+        </li>
+      ))}
+      {q.data?.data.truncated ? (
+        <li className="text-xs text-muted-foreground/60">Showing the 50 most recent.</li>
+      ) : null}
+    </ul>
+  );
+}
+
 function ShareRow({
   row,
   onRevoke,
@@ -190,6 +283,7 @@ function ShareRow({
   const total = row.counts.heart + row.counts.eyes + row.counts.nope;
   const [editingTake, setEditingTake] = useState(false);
   const [draftTake, setDraftTake] = useState('');
+  const [showActivity, setShowActivity] = useState(false);
 
   return (
     <Card
@@ -327,7 +421,13 @@ function ShareRow({
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span>{relativeTime(row.createdAt)}</span>
           {total > 0 ? (
-            <span className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowActivity((v) => !v)}
+              aria-expanded={showActivity}
+              className="flex items-center gap-2 hover:text-foreground transition-colors"
+              title="Show recent reaction activity"
+            >
               <span aria-label={`${row.counts.heart.toString()} hearts`}>
                 {ICONS.heart} {row.counts.heart}
               </span>
@@ -337,7 +437,8 @@ function ShareRow({
               <span aria-label={`${row.counts.nope.toString()} not for me`}>
                 {ICONS.nope} {row.counts.nope}
               </span>
-            </span>
+              <span className="opacity-60 text-[10px]">{showActivity ? '▲' : '▼'}</span>
+            </button>
           ) : (
             <span className="opacity-70">No reactions yet</span>
           )}
@@ -356,6 +457,12 @@ function ShareRow({
             </label>
           ) : null}
         </div>
+
+        {showActivity && total > 0 ? (
+          <div className="mt-1 rounded-md border border-border/60 bg-muted/30 p-2">
+            <ReactionActivity token={row.token} />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2 shrink-0">
