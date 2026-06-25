@@ -12,9 +12,11 @@ Track what you're watching, rate it, drop a one-line take, and send a friend a p
 | UI | Tailwind v4 + shadcn/ui (Base UI primitives) |
 | Client data | TanStack Query + Zod |
 | Database | Drizzle ORM + libSQL (`file:./local.db` in dev, Turso in prod) |
+| Auth | Clerk |
+| Rate limiting | Upstash Redis / Vercel KV (in-memory fallback for dev) |
 | Anime metadata | Jikan v4 (no API key) |
 | OG images | `next/og` `ImageResponse` |
-| Tests | Vitest |
+| Tests / CI | Vitest + Playwright; GitHub Actions (lint, typecheck, unit, build) |
 
 ## Quick start
 
@@ -40,6 +42,14 @@ Optional: `node scripts/seed.mjs` populates the library with 25 popular shows.
 - Curatorial **lists** (separate from status) — create, rename, delete, manage memberships per entry
 - **Share loop**: generate a link with an optional one-line take. A snapshot of cover/title/score/status is frozen at share time, so changing your score later doesn't change what the recipient sees
 - **Anonymous reactions** on share pages (❤️ / 👀 / 🚫) — mutex per browser, cookie-set reactor IDs, no signup required
+- **Save from a share** — recipients add a shared title straight into their own library
+- **Per-share controls**: hide your score from recipients (`includeScore`), edit the take, re-snapshot, or revoke
+- **Creator dashboard** at `/shares` — reaction rollup, per-share opens (anonymous view analytics) + reaction rate, and a per-share reaction-activity drill-down
+- **Import** an existing library from **MyAnimeList** or **AniList** (additive, dedupes on MAL id)
+- **Curatorial lists** with manual drag-and-drop reordering (persisted)
+- **Stats / year-in-review** (`/stats`) — status mix, score distribution, completion rate, top genres, your-score-vs-community delta, completions by year
+- **Discover** (`/discover`) — content-based recommendations from your highly-rated titles + MAL co-recommendation edges
+- **Opt-in public profile** (`/u/<handle>`) — a stable page collecting your shares; private until you turn it on
 - Dynamic OG images via `next/og` — what unfurls in WhatsApp / Slack / Discord
 - "Track your own watchlist" CTA on share pages
 
@@ -47,8 +57,8 @@ Optional: `node scripts/seed.mjs` populates the library with 25 popular shows.
 
 - **Shares are immutable artifacts.** A share captures a snapshot at creation time; updating your score later doesn't change what the recipient sees. To update what a friend sees, generate a new share.
 - **Lists and status are orthogonal.** `status='watching'` is progress; lists are curation.
-- **Private vs public.** `entries.private_notes` never reaches a share page. `user_score` does.
-- **Auth seam reserved.** `lib/auth.ts` exports `getCurrentUserId()` returning `'me'` in v1; swap to a real session id when NextAuth lands and every existing query keeps working.
+- **Private vs public.** `entries.private_notes` never reaches a share page. `user_score` does — unless the creator hides it per-share via the `includeScore` toggle (the snapshot still freezes the number; it's just gated from the public render).
+- **Auth via Clerk, behind a seam.** `lib/auth.ts` wraps Clerk's `auth()` and exposes `getCurrentUserId()` / `requireUserId()`; routes and queries depend only on that seam, so swapping the provider later wouldn't touch query code.
 
 ## Deploying (Vercel + Turso)
 
@@ -64,16 +74,19 @@ Optional: `node scripts/seed.mjs` populates the library with 25 popular shows.
 
 3. **Import on Vercel** → connect the GitHub repo.
 
-4. **Set Vercel env vars:**
+4. **Set Vercel env vars** (see [`.env.example`](.env.example) for the full list):
    - `DATABASE_URL=libsql://<your-db>.turso.io`
    - `DATABASE_AUTH_TOKEN=<token from step 1>`
    - `NEXT_PUBLIC_BASE_URL=https://<your-vercel-domain>`
+   - Clerk: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (+ the sign-in/up URL vars)
 
-5. **Deploy.** The `prebuild` script runs `drizzle-kit migrate` against Turso before `next build`, so schema is always applied before the new code goes live.
+5. **Provision rate-limit storage.** Vercel → Storage → add **Upstash for Redis** (Marketplace) and connect it to the project for Production + Preview with an empty prefix. It injects `KV_REST_API_*` automatically — no manual values. (Skip this and production logs a rate-limit error and runs on the no-op fallback.)
+
+6. **Deploy.** The `prebuild` script runs `drizzle-kit migrate` against Turso before `next build`, so schema is always applied before the new code goes live.
 
 ## Production notes
 
-- **Rate limits aren't enforced on Vercel without Upstash.** [`lib/rate-limit.ts`](lib/rate-limit.ts) uses an in-memory token bucket that's fine for `next dev` but a no-op on serverless (each invocation gets fresh memory). Before sharing the URL outside a trusted circle, swap to `@upstash/ratelimit` + `@upstash/redis`. ~30 minutes of work.
+- **Rate limiting uses Upstash Redis / Vercel KV in production.** [`lib/rate-limit.ts`](lib/rate-limit.ts) reads `UPSTASH_REDIS_REST_URL`/`_TOKEN` (or the `KV_REST_API_*` aliases) and falls back to an in-memory token bucket for `next dev`. Provision via the Vercel Marketplace "Upstash for Redis" integration and connect it to the project (empty prefix → it injects `KV_REST_API_*` automatically). Behavior: a configured store that errors **fails open** to the in-memory check (an outage never 500s a request); a production boot with no store logs an error (or hard-fails if `RATE_LIMIT_REQUIRE_REDIS=1`) rather than silently running unprotected.
 - **Jikan rate limits:** 3 req/sec, 60 req/min unauthenticated. The app caches search results in-process and per-anime metadata in `anime_cache` with a 7-day TTL.
 - **OG images run on the Node runtime.** `opengraph-image.tsx` files explicitly opt out of Edge so they can use `share-loader.ts` directly. Trade-off is marginally slower cold start; gain is module-environment consistency.
 
@@ -100,7 +113,7 @@ Optional: `node scripts/seed.mjs` populates the library with 25 popular shows.
 npm run test:run
 ```
 
-70 unit tests (Vitest) covering filter predicates, rate-limit token-bucket math + store selection, share token generation, snapshot builders, reaction/stats aggregation, AniList import transforms, recommendation ranking, and profile-handle validation. Playwright covers an unauthenticated smoke suite plus an authed share-loop spec. CI (GitHub Actions) runs lint, typecheck, the unit suite, and a production build on every PR; the suite requires Node ≥22 (see `.nvmrc`).
+72 unit tests (Vitest) covering filter predicates, rate-limit token-bucket math + store selection, share token generation, snapshot builders, reaction/stats aggregation, AniList import transforms, recommendation ranking, and profile-handle validation. Playwright covers an unauthenticated smoke suite plus an authed share-loop spec. CI (GitHub Actions) runs lint, typecheck, the unit suite, and a production build on every PR; the suite requires Node ≥22 (see `.nvmrc`).
 
 ## Intentionally not built
 
