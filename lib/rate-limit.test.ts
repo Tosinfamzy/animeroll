@@ -36,6 +36,27 @@ describe('selectStore', () => {
       selectStore({ UPSTASH_REDIS_REST_URL: 'https://x' }),
     ).toEqual({ kind: 'memory' });
   });
+
+  it('treats empty-string vars as absent and falls through to KV', () => {
+    const choice = selectStore({
+      UPSTASH_REDIS_REST_URL: '',
+      UPSTASH_REDIS_REST_TOKEN: '   ',
+      KV_REST_API_URL: 'https://kv.example',
+      KV_REST_API_TOKEN: 'kvtok',
+    });
+    expect(choice).toEqual({ kind: 'redis', url: 'https://kv.example', token: 'kvtok' });
+  });
+
+  it('returns memory when every candidate is empty', () => {
+    expect(
+      selectStore({
+        UPSTASH_REDIS_REST_URL: '',
+        UPSTASH_REDIS_REST_TOKEN: '',
+        KV_REST_API_URL: '',
+        KV_REST_API_TOKEN: '',
+      }),
+    ).toEqual({ kind: 'memory' });
+  });
 });
 
 describe('checkRateLimit (in-memory fallback)', () => {

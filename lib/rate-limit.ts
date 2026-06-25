@@ -23,9 +23,18 @@ export type StoreChoice =
   | { kind: 'redis'; url: string; token: string }
   | { kind: 'memory' };
 
+function firstNonEmpty(...vals: (string | undefined)[]): string | undefined {
+  for (const v of vals) {
+    if (v !== undefined && v.trim() !== '') return v;
+  }
+  return undefined;
+}
+
 export function selectStore(env: Record<string, string | undefined>): StoreChoice {
-  const url = env.UPSTASH_REDIS_REST_URL ?? env.KV_REST_API_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN ?? env.KV_REST_API_TOKEN;
+  // Treat empty-string vars as absent: an empty UPSTASH_* must not shadow a
+  // valid KV_* (and vice versa). Vercel/the CLI can leave a var defined-but-blank.
+  const url = firstNonEmpty(env.UPSTASH_REDIS_REST_URL, env.KV_REST_API_URL);
+  const token = firstNonEmpty(env.UPSTASH_REDIS_REST_TOKEN, env.KV_REST_API_TOKEN);
   if (url && token) return { kind: 'redis', url, token };
   return { kind: 'memory' };
 }
@@ -54,6 +63,10 @@ const redis: Redis | null =
 // Emit one structured warning the first time the in-memory path actually serves
 // a request, so an unexpected fallback in any deployed environment is visible.
 let fallbackWarned = false;
+// Same, but for the case where a configured Upstash limiter throws (outage,
+// dead/rotated credentials, network blip). We fail open to the in-memory check
+// rather than letting the rejection 500 the request.
+let redisErrorWarned = false;
 
 const limiterCache = new Map<string, Ratelimit>();
 
@@ -116,12 +129,22 @@ export async function checkRateLimit(
   const prefix = key.split(':')[0] ?? 'rl';
   const limiter = getUpstashLimiter(prefix, limit, windowMs);
   if (limiter) {
-    const r = await limiter.limit(key);
-    return {
-      allowed: r.success,
-      remaining: r.remaining,
-      retryAfterMs: r.success ? 0 : Math.max(0, r.reset - Date.now()),
-    };
+    try {
+      const r = await limiter.limit(key);
+      return {
+        allowed: r.success,
+        remaining: r.remaining,
+        retryAfterMs: r.success ? 0 : Math.max(0, r.reset - Date.now()),
+      };
+    } catch (err) {
+      // Fail open to the in-memory check: a Redis outage or bad credentials
+      // must not take down every rate-limited endpoint.
+      if (!redisErrorWarned) {
+        redisErrorWarned = true;
+        log.error({ err }, 'rate-limit: Upstash limiter failed; falling back to in-memory');
+      }
+      return inMemoryCheck(key, limit, windowMs);
+    }
   }
   if (!fallbackWarned) {
     fallbackWarned = true;
